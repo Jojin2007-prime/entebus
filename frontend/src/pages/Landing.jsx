@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { Bus, QrCode, Clock, CreditCard, Star } from 'lucide-react';
 
 // --- ASSETS IMPORT ---
-import busImage from 'src/assets/bus.png';
+import busImage from '../src/assets/bus.png';
 
 export default function Landing() {
   const navigate = useNavigate();
