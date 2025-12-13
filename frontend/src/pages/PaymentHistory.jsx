@@ -19,7 +19,7 @@ export default function PaymentHistory() {
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('user'));
     if (user) {
-      axios.get(`http://localhost:5000/api/bookings/user/${user.email}`)
+      axios.get(`https://entebus-api.onrender.com/api/bookings/user/${user.email}`)
         .then(res => {
           setBookings(res.data);
           setLoading(false);
@@ -32,7 +32,7 @@ export default function PaymentHistory() {
     const user = JSON.parse(localStorage.getItem('user'));
     try {
       // 1. Create Order
-      const { data: { id: order_id } } = await axios.post('http://localhost:5000/api/payment/order', { amount: booking.amount });
+      const { data: { id: order_id } } = await axios.post('https://entebus-api.onrender.com/api/payment/order', { amount: booking.amount });
       
       // 2. Open Razorpay
       const options = {
@@ -44,7 +44,7 @@ export default function PaymentHistory() {
         order_id: order_id,
         handler: async function (response) {
           // 3. Verify on Success
-          await axios.post('http://localhost:5000/api/bookings/verify', {
+          await axios.post('https://entebus-api.onrender.com/api/bookings/verify', {
             razorpay_order_id: response.razorpay_order_id,
             razorpay_payment_id: response.razorpay_payment_id,
             razorpay_signature: response.razorpay_signature,

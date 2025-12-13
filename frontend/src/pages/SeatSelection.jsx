@@ -33,10 +33,10 @@ export default function SeatSelection() {
     if (!selectedDate) { alert("No date selected!"); navigate('/search'); return; }
     
     // 1. Fetch Bus
-    axios.get(`http://localhost:5000/api/buses/${busId}`).then(res => setBus(res.data));
+    axios.get(`https://entebus-api.onrender.com/api/buses/${busId}`).then(res => setBus(res.data));
 
     // 2. Fetch Occupied Seats for THIS Date
-    axios.get(`http://localhost:5000/api/bookings/occupied?busId=${busId}&date=${selectedDate}`)
+    axios.get(`https://entebus-api.onrender.com/api/bookings/occupied?busId=${busId}&date=${selectedDate}`)
       .then(res => setOccupiedSeats(res.data))
       .catch(err => console.error("Error fetching seats", err));
     
@@ -61,20 +61,20 @@ export default function SeatSelection() {
     const amount = selectedSeats.length * bus.price;
 
     try {
-      const bookingRes = await axios.post('http://localhost:5000/api/bookings/init', {
+      const bookingRes = await axios.post('https://entebus-api.onrender.com/api/bookings/init', {
         busId, seatNumbers: selectedSeats, customerEmail: user.email, 
         customerName: passengerName, customerPhone: phone, // Saved for Manifest
         amount, date: selectedDate
       });
       const currentBookingId = bookingRes.data.bookingId;
 
-      const { data: { id: order_id } } = await axios.post('http://localhost:5000/api/payment/order', { amount });
+      const { data: { id: order_id } } = await axios.post('https://entebus-api.onrender.com/api/payment/order', { amount });
 
       const options = {
         key: "rzp_test_Rp42r0Aqd3EZrY",
         amount: amount * 100, currency: "INR", name: "Ente Bus", description: `Booking #${currentBookingId}`, order_id: order_id,
         handler: async function (response) {
-          await axios.post('http://localhost:5000/api/bookings/verify', {
+          await axios.post('https://entebus-api.onrender.com/api/bookings/verify', {
             razorpay_order_id: response.razorpay_order_id, razorpay_payment_id: response.razorpay_payment_id,
             razorpay_signature: response.razorpay_signature, bookingId: currentBookingId
           });

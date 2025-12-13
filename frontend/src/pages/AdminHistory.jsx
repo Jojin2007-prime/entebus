@@ -13,7 +13,7 @@ const AdminHistory = () => {
   useEffect(() => {
     const fetchHistory = async () => {
       try {
-        const res = await axios.get('http://localhost:5000/api/admin/history');
+        const res = await axios.get('https://entebus-api.onrender.com/api/admin/history');
         setTrips(res.data); // The data structure matches our new backend
         setLoading(false);
       } catch (err) {

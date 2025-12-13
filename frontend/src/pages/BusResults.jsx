@@ -24,7 +24,7 @@ export default function BusResults() {
   useEffect(() => {
     const fetchBuses = async () => {
       try {
-        const res = await axios.get(`http://localhost:5000/api/buses${location.search}`);
+        const res = await axios.get(`https://entebus-api.onrender.com/api/buses${location.search}`);
         setBuses(res.data);
       } catch (err) { console.error(err); } finally { setLoading(false); }
     };

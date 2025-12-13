@@ -41,14 +41,14 @@ export default function Admin() {
   // --- API CALLS ---
   const fetchBookings = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/admin/bookings');
+      const res = await axios.get('https://entebus-api.onrender.com/api/admin/bookings');
       setBookings(res.data);
     } catch (err) { console.error(err); }
   };
 
   const fetchBuses = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/buses');
+      const res = await axios.get('https://entebus-api.onrender.com/api/buses');
       setBuses(res.data);
     } catch (err) { console.error(err); }
   };
@@ -57,12 +57,12 @@ export default function Admin() {
     e.preventDefault();
     try {
       if (isEditing) {
-        await axios.put(`http://localhost:5000/api/buses/${editId}`, formData);
+        await axios.put(`https://entebus-api.onrender.com/api/buses/${editId}`, formData);
         alert('✅ Bus Updated Successfully!');
         setIsEditing(false); 
         setEditId(null);
       } else {
-        await axios.post('http://localhost:5000/api/buses', formData);
+        await axios.post('https://entebus-api.onrender.com/api/buses', formData);
         alert('✅ New Bus Added!');
       }
       setFormData({ name: '', registrationNumber: '', from: '', to: '', departureTime: '', price: '', driverName: '', driverContact: '' });
@@ -89,7 +89,7 @@ export default function Admin() {
   const handleDeleteBus = async (id) => {
     if (window.confirm("Are you sure you want to delete this bus route? This action cannot be undone.")) {
       try {
-        await axios.delete(`http://localhost:5000/api/buses/${id}`);
+        await axios.delete(`https://entebus-api.onrender.com/api/buses/${id}`);
         fetchBuses();
       } catch (err) { alert("Error deleting bus"); }
     }
@@ -98,7 +98,7 @@ export default function Admin() {
   const handleFetchManifest = async () => {
     if (!manifestBusId || !manifestDate) return alert("Please select both a Bus and a Date.");
     try {
-      const res = await axios.get(`http://localhost:5000/api/admin/manifest?busId=${manifestBusId}&date=${manifestDate}`);
+      const res = await axios.get(`https://entebus-api.onrender.com/api/admin/manifest?busId=${manifestBusId}&date=${manifestDate}`);
       setManifestData(res.data);
     } catch (err) { alert("Error fetching manifest data"); }
   };

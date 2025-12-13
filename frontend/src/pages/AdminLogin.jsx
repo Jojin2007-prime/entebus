@@ -19,7 +19,7 @@ export default function AdminLogin() {
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post('http://localhost:5000/api/admin/login', { username, password });
+      const res = await axios.post('https://entebus-api.onrender.com/api/admin/login', { username, password });
       if (res.data.success) {
         localStorage.setItem('admin', 'true'); // Keeps you logged in even after refresh
         window.location.href = "/admin"; // Force reload to update Navbar

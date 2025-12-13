@@ -22,7 +22,7 @@ export default function BookingSuccess() {
 
   useEffect(() => {
     // Fetch Booking Details using the ID from URL
-    axios.get(`http://localhost:5000/api/verify/${id}`)
+    axios.get(`https://entebus-api.onrender.com/api/verify/${id}`)
       .then(res => {
         setBooking(res.data);
         setLoading(false);

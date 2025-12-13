@@ -9,7 +9,7 @@ const AdminTripHistory = () => {
 
   useEffect(() => {
     // This fetches the "smart" history from the backend route we added earlier
-    axios.get('http://localhost:5000/api/admin/history')
+    axios.get('https://entebus-api.onrender.com/api/admin/history')
       .then(res => setTrips(res.data))
       .catch(err => console.error(err));
   }, []);

@@ -17,7 +17,7 @@ export default function BusSchedule() {
   };
 
   useEffect(() => {
-    axios.get('http://localhost:5000/api/buses')
+    axios.get('https://entebus-api.onrender.com/api/buses')
       .then(res => {
         setBuses(res.data);
         setLoading(false);

@@ -18,7 +18,7 @@ export default function TicketPrices() {
 
   useEffect(() => {
     // Fetches ALL buses because we send no query params
-    axios.get('http://localhost:5000/api/buses')
+    axios.get('https://entebus-api.onrender.com/api/buses')
       .then(res => {
         setBuses(res.data);
         setLoading(false);

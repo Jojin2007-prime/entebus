@@ -42,7 +42,7 @@ export default function TicketVerifier() {
   const verifyTicket = async (id) => {
     setLoading(true); setTicketData(null); setError(''); setTicketStatus(null);
     try {
-      const res = await axios.get(`http://localhost:5000/api/verify/${id}`);
+      const res = await axios.get(`https://entebus-api.onrender.com/api/verify/${id}`);
       const booking = res.data;
 
       // 📅 CHECK EXPIRY

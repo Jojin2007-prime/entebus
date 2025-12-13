@@ -22,7 +22,7 @@ export default function BusManifest() {
     const init = async () => {
       try {
         // A. Fetch All Buses for the Grid
-        const busRes = await axios.get('http://localhost:5000/api/buses');
+        const busRes = await axios.get('https://entebus-api.onrender.com/api/buses');
         setBuses(busRes.data);
         setLoading(false);
 
@@ -36,7 +36,7 @@ export default function BusManifest() {
              handleViewManifest(targetBus, urlDate);
           } else {
              // Fallback if bus isn't in the main list yet
-             const specificBusRes = await axios.get(`http://localhost:5000/api/buses/${urlBusId}`);
+             const specificBusRes = await axios.get(`https://entebus-api.onrender.com/api/buses/${urlBusId}`);
              handleViewManifest(specificBusRes.data, urlDate);
           }
         }
@@ -63,7 +63,7 @@ export default function BusManifest() {
     try {
       const queryDate = date || filterDate; 
       // This allows fetching ALL history if date is empty, or filtering if date exists
-      const url = `http://localhost:5000/api/admin/manifest?busId=${busId}&date=${queryDate}`;
+      const url = `https://entebus-api.onrender.com/api/admin/manifest?busId=${busId}&date=${queryDate}`;
       
       const res = await axios.get(url);
       setPassengers(res.data);

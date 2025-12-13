@@ -22,7 +22,7 @@ export default function Payment() {
     try {
       // A. Create Order on Backend
       // Make sure your backend is running on port 5000
-      const orderUrl = "http://localhost:5000/api/payment/order";
+      const orderUrl = "https://entebus-api.onrender.com/api/payment/order";
       const { data: order } = await axios.post(orderUrl, { amount: state.amount });
 
       // B. Razorpay Options
@@ -36,7 +36,7 @@ export default function Payment() {
         handler: async function (response) {
           // C. Verify Payment after success
           try {
-            const verifyUrl = "http://localhost:5000/api/bookings/verify";
+            const verifyUrl = "https://entebus-api.onrender.com/api/bookings/verify";
             const verifyData = {
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
