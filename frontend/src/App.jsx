@@ -1,10 +1,15 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 
-// 👇 THESE ARE CRITICAL FOR THE STYLE
+// 👇 Context & Chatbot Imports (NEW)
+import { ThemeProvider } from './context/ThemeContext';
+import EnteBusChatBot from './components/ChatBot';
+
+// 👇 Style & Toast Imports
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css'; 
 
+// 👇 Component & Page Imports
 import Navbar from './components/Navbar';
 import Landing from './pages/Landing';
 import SearchBuses from './pages/SearchBuses';
@@ -26,33 +31,43 @@ import Payment from './pages/Payment';
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <div className="min-h-screen bg-gray-50 font-sans text-gray-900">
-        <Navbar />
-        
-        {/* 👇 THIS COMPONENT SHOWS THE POPUP */}
-        <ToastContainer position="top-center" autoClose={3000} theme="colored" />
+    // 1. Wrap the entire Router in the ThemeProvider
+    <ThemeProvider>
+      <BrowserRouter>
+        {/* 2. Update the main div with dark mode classes and transition */}
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 font-sans text-gray-900 dark:text-white transition-colors duration-300 relative">
+          
+          <Navbar />
+          
+          {/* Toast Notifications */}
+          <ToastContainer position="top-center" autoClose={3000} theme="colored" />
 
-        <Routes>
-          <Route path="/" element={<Landing />} />
-          <Route path="/search" element={<SearchBuses />} />
-          <Route path="/buses" element={<BusResults />} />
-          <Route path="/seats/:busId" element={<SeatSelection />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/about" element={<AboutUs />} />
-          <Route path="/prices" element={<TicketPrices />} />
-          <Route path="/schedule" element={<BusSchedule />} />
-          <Route path="/history" element={<PaymentHistory />} />
-          <Route path="/admin-login" element={<AdminLogin />} />
-          <Route path="/admin" element={<Admin />} />
-          <Route path="/verify" element={<TicketVerifier />} />
-          <Route path="/switch-user" element={<SwitchUserWarning />} />
-          <Route path="/booking-success/:id" element={<BookingSuccess />} />
-          <Route path="/admin/history" element={<AdminTripHistory />} />
-          <Route path="/payment" element={<Payment />} />
-        </Routes>
-      </div>
-    </BrowserRouter>
+          {/* Page Routes */}
+          <Routes>
+            <Route path="/" element={<Landing />} />
+            <Route path="/search" element={<SearchBuses />} />
+            <Route path="/buses" element={<BusResults />} />
+            <Route path="/seats/:busId" element={<SeatSelection />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/about" element={<AboutUs />} />
+            <Route path="/prices" element={<TicketPrices />} />
+            <Route path="/schedule" element={<BusSchedule />} />
+            <Route path="/history" element={<PaymentHistory />} />
+            <Route path="/admin-login" element={<AdminLogin />} />
+            <Route path="/admin" element={<Admin />} />
+            <Route path="/verify" element={<TicketVerifier />} />
+            <Route path="/switch-user" element={<SwitchUserWarning />} />
+            <Route path="/booking-success/:id" element={<BookingSuccess />} />
+            <Route path="/admin/history" element={<AdminTripHistory />} />
+            <Route path="/payment" element={<Payment />} />
+          </Routes>
+
+          {/* 3. Add the ChatBot here so it appears on all pages */}
+          <EnteBusChatBot />
+
+        </div>
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }
