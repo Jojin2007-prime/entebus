@@ -3,9 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Bus, QrCode, Clock, CreditCard, Star } from 'lucide-react';
 
-// --- CORRECT IMPORT FOR ASSETS FOLDER ---
-// Ensure your folder is named "assets" (plural), not "asset"
-import busImage from './bus.png'; 
+// --- ASSETS IMPORT ---
+import busImage from '../assets/bus.png'; // Make sure this path is correct for your folder structure
 
 export default function Landing() {
   const navigate = useNavigate();
@@ -20,9 +19,11 @@ export default function Landing() {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    // Added transition-colors for smooth switching
+    <div className="min-h-screen bg-white dark:bg-slate-900 transition-colors duration-300">
       
       {/* --- HERO SECTION --- */}
+      {/* No changes needed here as the gradient looks good in both modes */}
       <div className="relative bg-gradient-to-br from-indigo-900 via-indigo-800 to-blue-900 text-white overflow-hidden">
         
         {/* Background Shapes */}
@@ -75,15 +76,18 @@ export default function Landing() {
             <div className="bg-gradient-to-b from-white/10 to-transparent p-8 rounded-[3rem] border border-white/10 backdrop-blur-sm relative">
               
               {/* Floating Status Card */}
+              {/* UPDATE: Added dark:bg-slate-800 and dark:text-white */}
               <motion.div 
                 animate={{ y: [0, -10, 0] }} 
                 transition={{ repeat: Infinity, duration: 4 }}
-                className="bg-white p-4 rounded-2xl shadow-xl absolute -top-6 -left-6 z-20 flex items-center gap-3"
+                className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-xl absolute -top-6 -left-6 z-20 flex items-center gap-3 transition-colors duration-300"
               >
-                <div className="bg-green-100 p-2 rounded-lg text-green-600"><CheckCircle size={20} /></div>
+                <div className="bg-green-100 dark:bg-green-900/30 p-2 rounded-lg text-green-600 dark:text-green-400">
+                  <CheckCircle size={20} />
+                </div>
                 <div>
-                  <p className="text-xs text-gray-500 font-bold uppercase">Status</p>
-                  <p className="text-gray-900 font-bold">Confirmed</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase">Status</p>
+                  <p className="text-gray-900 dark:text-white font-bold">Confirmed</p>
                 </div>
               </motion.div>
 
@@ -100,46 +104,48 @@ export default function Landing() {
       </div>
 
       {/* --- FEATURES SECTION --- */}
-      <div className="py-24 bg-gray-50">
+      {/* UPDATE: bg-gray-50 -> dark:bg-slate-900 */}
+      <div className="py-24 bg-gray-50 dark:bg-slate-900 transition-colors duration-300">
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-black text-gray-900 mb-4">Why Book With Us?</h2>
-            <p className="text-gray-500 max-w-2xl mx-auto text-lg">We simplify your travel experience with cutting-edge technology and customer-first service.</p>
+            <h2 className="text-3xl md:text-4xl font-black text-gray-900 dark:text-white mb-4 transition-colors">Why Book With Us?</h2>
+            <p className="text-gray-500 dark:text-slate-400 max-w-2xl mx-auto text-lg transition-colors">We simplify your travel experience with cutting-edge technology and customer-first service.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
             {/* Feature 1 */}
-            <div className="bg-white p-8 rounded-3xl shadow-sm hover:shadow-xl transition border border-gray-100 group">
-              <div className="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 mb-6 group-hover:scale-110 transition">
+            {/* UPDATE: Card styles for Dark Mode */}
+            <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm hover:shadow-xl transition-all border border-gray-100 dark:border-slate-700 group">
+              <div className="w-16 h-16 bg-indigo-50 dark:bg-slate-700 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 mb-6 group-hover:scale-110 transition">
                 <QrCode size={32} />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">QR Ticket Verification</h3>
-              <p className="text-gray-500 leading-relaxed">Board instantly with our digital ticketing system. Just scan your unique QR code.</p>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">QR Ticket Verification</h3>
+              <p className="text-gray-500 dark:text-slate-400 leading-relaxed">Board instantly with our digital ticketing system. Just scan your unique QR code.</p>
             </div>
 
             {/* Feature 2 */}
-            <div className="bg-white p-8 rounded-3xl shadow-sm hover:shadow-xl transition border border-gray-100 group">
-              <div className="w-16 h-16 bg-pink-50 rounded-2xl flex items-center justify-center text-pink-600 mb-6 group-hover:scale-110 transition">
+            <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm hover:shadow-xl transition-all border border-gray-100 dark:border-slate-700 group">
+              <div className="w-16 h-16 bg-pink-50 dark:bg-slate-700 rounded-2xl flex items-center justify-center text-pink-600 dark:text-pink-400 mb-6 group-hover:scale-110 transition">
                 <Clock size={32} />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">On-Time Guarantee</h3>
-              <p className="text-gray-500 leading-relaxed">We value your time. Our buses depart and arrive strictly according to the schedule.</p>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">On-Time Guarantee</h3>
+              <p className="text-gray-500 dark:text-slate-400 leading-relaxed">We value your time. Our buses depart and arrive strictly according to the schedule.</p>
             </div>
 
             {/* Feature 3 */}
-            <div className="bg-white p-8 rounded-3xl shadow-sm hover:shadow-xl transition border border-gray-100 group">
-              <div className="w-16 h-16 bg-green-50 rounded-2xl flex items-center justify-center text-green-600 mb-6 group-hover:scale-110 transition">
+            <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm hover:shadow-xl transition-all border border-gray-100 dark:border-slate-700 group">
+              <div className="w-16 h-16 bg-green-50 dark:bg-slate-700 rounded-2xl flex items-center justify-center text-green-600 dark:text-green-400 mb-6 group-hover:scale-110 transition">
                 <CreditCard size={32} />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Secure Payments</h3>
-              <p className="text-gray-500 leading-relaxed">Pay with UPI, Cards, or Netbanking. Your transactions are encrypted and 100% safe.</p>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">Secure Payments</h3>
+              <p className="text-gray-500 dark:text-slate-400 leading-relaxed">Pay with UPI, Cards, or Netbanking. Your transactions are encrypted and 100% safe.</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* --- FOOTER CTA --- */}
-      <div className="bg-gray-900 py-12 text-center text-white">
+      <div className="bg-gray-900 dark:bg-slate-950 py-12 text-center text-white border-t border-gray-800 dark:border-slate-800">
         <h2 className="text-2xl font-bold mb-6">Ready to start your journey?</h2>
         <button 
           onClick={handleBookTicket} 

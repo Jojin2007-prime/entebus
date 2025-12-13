@@ -4,12 +4,25 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
-  darkMode: 'class', // ✅ Enables the toggle functionality
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
-        primary: '#FF5733', // Updated to the Bus Orange color
-        secondary: '#10B981', // Kept your original secondary color just in case
+        // This makes "bg-gray-900" look like a premium dark blue-gray
+        gray: {
+          50: '#f8fafc',
+          100: '#f1f5f9',
+          200: '#e2e8f0',
+          300: '#cbd5e1',
+          400: '#94a3b8',
+          500: '#64748b',
+          600: '#475569',
+          700: '#334155',
+          800: '#1e293b', // beautiful dark card color
+          900: '#0f172a', // beautiful dark background
+          950: '#020617',
+        },
+        primary: '#FF5733', 
       }
     },
   },

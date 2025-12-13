@@ -2,59 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Smooth scrolling */
-html {
-  scroll-behavior: smooth;
-}
+html { scroll-behavior: smooth; }
 
-/* 1. Base Styles for Body */
 @layer base {
   body {
-    @apply bg-gray-100 text-gray-900 dark:bg-gray-900 dark:text-white transition-colors duration-300;
-  }
-}
-
-/* 2. GLOBAL DARK MODE OVERRIDES (The Magic Fix) */
-/* This forces existing white components to turn dark automatically */
-@layer utilities {
-  
-  /* Turn white backgrounds (Cards, Sections) to Dark Gray */
-  .dark .bg-white {
-    background-color: #1f2937 !important; /* gray-800 */
-    color: #ffffff !important;
-    border-color: #374151 !important; /* gray-700 */
-  }
-
-  /* Turn light gray backgrounds (Page backgrounds) to Darker Gray */
-  .dark .bg-gray-50, 
-  .dark .bg-gray-100 {
-    background-color: #111827 !important; /* gray-900 */
-    color: #ffffff !important;
-  }
-
-  /* Invert Text Colors */
-  .dark .text-gray-900, 
-  .dark .text-black {
-    color: #ffffff !important;
-  }
-  
-  .dark .text-gray-600, 
-  .dark .text-gray-500 {
-    color: #d1d5db !important; /* gray-300 */
-  }
-
-  /* Fix Input Fields and Select Boxes */
-  .dark input, 
-  .dark select, 
-  .dark textarea {
-    background-color: #374151 !important; /* gray-700 */
-    color: #ffffff !important;
-    border-color: #4b5563 !important; /* gray-600 */
-  }
-  
-  /* Fix Shadows to be visible on dark background */
-  .dark .shadow-md, 
-  .dark .shadow-lg {
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3) !important;
+    @apply bg-gray-50 text-gray-900 dark:bg-slate-900 dark:text-gray-100 transition-colors duration-300;
   }
 }

@@ -89,34 +89,50 @@ export default function SeatSelection() {
     } catch (err) { alert(err.response?.data?.message || "Payment Error"); }
   };
 
-  if (!bus) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  if (!bus) return <div className="min-h-screen flex items-center justify-center dark:bg-slate-900 dark:text-white">Loading...</div>;
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 flex justify-center">
-      <div className="bg-white p-8 rounded-3xl shadow-xl max-w-2xl w-full text-center h-fit border border-gray-100">
+    // Update 1: Main background
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 py-12 px-4 flex justify-center transition-colors duration-300">
+      {/* Update 2: Card background and border */}
+      <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-xl max-w-2xl w-full text-center h-fit border border-gray-100 dark:border-slate-700 transition-colors">
         
-        <h2 className="text-3xl font-black text-gray-900 mb-2">Select Seats</h2>
+        <h2 className="text-3xl font-black text-gray-900 dark:text-white mb-2">Select Seats</h2>
+        
         <div className="flex flex-col items-center gap-2 mb-8">
-            <p className="text-gray-500 font-bold flex items-center gap-2 text-lg">
-               {bus.from} <span className="w-1 h-1 rounded-full bg-gray-400"></span> {bus.to}
+            {/* Update 3: Route text */}
+            <p className="text-gray-500 dark:text-slate-400 font-bold flex items-center gap-2 text-lg">
+               {bus.from} <span className="w-1 h-1 rounded-full bg-gray-400 dark:bg-slate-500"></span> {bus.to}
             </p>
+            {/* Update 4: Badges for Date/Time */}
             <div className="flex gap-3">
-              <span className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full text-sm font-bold flex items-center gap-1"><Calendar size={14}/> {selectedDate}</span>
-              <span className="bg-orange-50 text-orange-700 px-3 py-1 rounded-full text-sm font-bold flex items-center gap-1"><Clock size={14}/> {formatTime(bus.departureTime)}</span>
+              <span className="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 px-3 py-1 rounded-full text-sm font-bold flex items-center gap-1 transition-colors">
+                <Calendar size={14}/> {selectedDate}
+              </span>
+              <span className="bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 px-3 py-1 rounded-full text-sm font-bold flex items-center gap-1 transition-colors">
+                <Clock size={14}/> {formatTime(bus.departureTime)}
+              </span>
             </div>
         </div>
 
         {/* SEAT GRID */}
-        <div className="grid grid-cols-4 gap-4 justify-items-center mb-8 max-w-xs mx-auto bg-gray-100 p-6 rounded-2xl border border-gray-200">
-          <div className="col-span-4 w-full h-8 bg-gray-300 rounded mb-4 text-xs flex items-center justify-center text-gray-500 font-bold tracking-widest">DRIVER</div>
+        {/* Update 5: Bus Chassis Background */}
+        <div className="grid grid-cols-4 gap-4 justify-items-center mb-8 max-w-xs mx-auto bg-gray-100 dark:bg-slate-900 p-6 rounded-2xl border border-gray-200 dark:border-slate-700 transition-colors">
+          {/* Driver Seat */}
+          <div className="col-span-4 w-full h-8 bg-gray-300 dark:bg-slate-700 rounded mb-4 text-xs flex items-center justify-center text-gray-500 dark:text-slate-400 font-bold tracking-widest transition-colors">DRIVER</div>
+          
           {Array.from({ length: 40 }, (_, i) => i + 1).map(seat => {
             const isBooked = occupiedSeats.includes(seat);
             return (
               <button key={seat} disabled={isBooked} onClick={() => toggleSeat(seat)} 
+                // Update 6: Seat Button Logic
                 className={`w-10 h-10 rounded-lg font-bold transition-all shadow-sm flex items-center justify-center text-sm
-                  ${isBooked ? 'bg-red-200 text-red-500 cursor-not-allowed' 
-                  : selectedSeats.includes(seat) ? 'bg-indigo-600 text-white shadow-indigo-300 shadow-md scale-110' 
-                  : 'bg-white text-gray-600 hover:bg-gray-200 border border-gray-200'}`}
+                  ${isBooked 
+                    ? 'bg-red-200 text-red-500 dark:bg-red-900/40 dark:text-red-400 cursor-not-allowed' // Booked
+                    : selectedSeats.includes(seat) 
+                      ? 'bg-indigo-600 text-white shadow-indigo-300 dark:shadow-indigo-900 shadow-md scale-110' // Selected
+                      : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700 border border-gray-200 dark:border-slate-600' // Available
+                  }`}
               >
                 {seat}
               </button>
@@ -125,20 +141,33 @@ export default function SeatSelection() {
         </div>
 
         {/* DETAILS & PAYMENT */}
-        <div className="border-t border-dashed border-gray-200 pt-6 space-y-4">
-          <div className="flex items-center gap-3 bg-gray-50 p-3 rounded-xl border border-gray-200 text-left">
-            <User className="text-gray-400" size={20} />
-            <input placeholder="Passenger Name" className="bg-transparent w-full outline-none font-bold text-gray-900" 
-              value={passengerName} onChange={(e) => setPassengerName(e.target.value)} />
+        <div className="border-t border-dashed border-gray-200 dark:border-slate-700 pt-6 space-y-4">
+          
+          {/* Update 7: Input Fields */}
+          <div className="flex items-center gap-3 bg-gray-50 dark:bg-slate-900 p-3 rounded-xl border border-gray-200 dark:border-slate-700 text-left transition-colors">
+            <User className="text-gray-400 dark:text-slate-500" size={20} />
+            <input 
+              placeholder="Passenger Name" 
+              className="bg-transparent w-full outline-none font-bold text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500" 
+              value={passengerName} 
+              onChange={(e) => setPassengerName(e.target.value)} 
+            />
           </div>
-          <div className="flex items-center gap-3 bg-gray-50 p-3 rounded-xl border border-gray-200 text-left">
-            <Phone className="text-gray-400" size={20} />
-            <input type="tel" placeholder="Phone Number" className="bg-transparent w-full outline-none font-bold text-gray-900" 
-              value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={10} />
+
+          <div className="flex items-center gap-3 bg-gray-50 dark:bg-slate-900 p-3 rounded-xl border border-gray-200 dark:border-slate-700 text-left transition-colors">
+            <Phone className="text-gray-400 dark:text-slate-500" size={20} />
+            <input 
+              type="tel" 
+              placeholder="Phone Number" 
+              className="bg-transparent w-full outline-none font-bold text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500" 
+              value={phone} 
+              onChange={(e) => setPhone(e.target.value)} 
+              maxLength={10} 
+            />
           </div>
 
           <button onClick={handlePayment} disabled={selectedSeats.length === 0} 
-            className="w-full bg-indigo-600 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition disabled:opacity-50">
+            className="w-full bg-indigo-600 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-indigo-200 dark:shadow-none hover:bg-indigo-700 transition disabled:opacity-50">
             <CreditCard size={20} /> {selectedSeats.length === 0 ? 'Select Seats' : `Pay ₹${selectedSeats.length * bus.price}`}
           </button>
         </div>
