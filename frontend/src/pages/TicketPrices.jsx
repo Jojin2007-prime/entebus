@@ -27,15 +27,17 @@ export default function TicketPrices() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6 md:p-12">
+    // Update 1: Main background
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 p-6 md:p-12 transition-colors duration-300">
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-black text-gray-900 mb-4">Current Ticket Prices</h1>
-          <p className="text-gray-500">Transparent pricing for all our active routes.</p>
+          {/* Update 2: Text Colors */}
+          <h1 className="text-4xl font-black text-gray-900 dark:text-white mb-4 transition-colors">Current Ticket Prices</h1>
+          <p className="text-gray-500 dark:text-slate-400 transition-colors">Transparent pricing for all our active routes.</p>
         </div>
 
         {loading ? (
-          <p className="text-center text-gray-400">Loading rates...</p>
+          <p className="text-center text-gray-400 dark:text-slate-500">Loading rates...</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {buses.map((bus, index) => (
@@ -44,24 +46,27 @@ export default function TicketPrices() {
                 initial={{ opacity: 0, scale: 0.9 }} 
                 animate={{ opacity: 1, scale: 1 }} 
                 transition={{ delay: index * 0.1 }}
-                className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-xl transition-all"
+                // Update 3: Card Styling
+                className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 hover:shadow-xl transition-all"
               >
                 <div className="flex justify-between items-start mb-4">
-                  <div className="bg-indigo-50 text-indigo-700 p-2 rounded-lg">
+                  <div className="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 p-2 rounded-lg transition-colors">
                     <Tag size={20} />
                   </div>
-                  <span className="text-3xl font-black text-gray-900">₹{bus.price}</span>
+                  {/* Update 4: Price Text */}
+                  <span className="text-3xl font-black text-gray-900 dark:text-white transition-colors">₹{bus.price}</span>
                 </div>
                 
-                <h3 className="text-xl font-bold text-gray-800 mb-2">{bus.name}</h3>
+                <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-2 transition-colors">{bus.name}</h3>
                 
-                <div className="flex items-center gap-2 text-gray-500 font-medium mb-4">
+                <div className="flex items-center gap-2 text-gray-500 dark:text-slate-400 font-medium mb-4 transition-colors">
                   {bus.from} <ArrowRight size={16} /> {bus.to}
                 </div>
                 
-                <div className="pt-4 border-t border-gray-50 flex justify-between items-center text-sm">
-                  <span className="text-gray-400 font-medium">Daily Departure</span>
-                  <div className="flex items-center gap-1 font-bold text-gray-700 bg-gray-50 px-2 py-1 rounded">
+                {/* Update 5: Footer Border */}
+                <div className="pt-4 border-t border-gray-50 dark:border-slate-700 flex justify-between items-center text-sm transition-colors">
+                  <span className="text-gray-400 dark:text-slate-500 font-medium">Daily Departure</span>
+                  <div className="flex items-center gap-1 font-bold text-gray-700 dark:text-slate-200 bg-gray-50 dark:bg-slate-700/50 px-2 py-1 rounded transition-colors">
                      <Clock size={14} className="text-orange-500"/>
                      {formatTime(bus.departureTime)}
                   </div>
