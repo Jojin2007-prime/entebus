@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { 
   Bus, User, LogOut, ScanLine, History, Calendar, Home, 
   LayoutDashboard, Search, IndianRupee, Info, ChevronRight, 
-  Sun, Moon, MessageSquareWarning // <--- 1. Added Icon Here
+  Sun, Moon, MessageSquareWarning 
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
@@ -12,7 +12,6 @@ export default function Navbar() {
   const location = useLocation(); 
   const { theme, toggleTheme } = useTheme();
 
-  // Get user data
   const user = JSON.parse(localStorage.getItem('user'));
   const admin = localStorage.getItem('admin'); 
 
@@ -23,7 +22,6 @@ export default function Navbar() {
     window.location.reload();
   };
 
-  // Nav Item Component with Dark Mode support
   const NavItem = ({ to, icon: Icon, label }) => {
     const isActive = location.pathname === to;
     return (
@@ -44,29 +42,25 @@ export default function Navbar() {
   return (
     <nav className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-md sticky top-0 z-50 border-b border-gray-100 dark:border-gray-800 transition-colors duration-300">
       <div className="container mx-auto px-4 py-3">
-        
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           
-          {/* 1. LOGO */}
+          {/* LOGO */}
           <div className="flex justify-between items-center">
             <Link to="/" className="text-2xl font-black text-gray-900 dark:text-white flex items-center gap-2 tracking-tight">
               <div className="bg-gradient-to-tr from-indigo-600 to-purple-400 text-white p-2 rounded-xl shadow-md">
                 <Bus size={26} />
               </div>
               <span className="text-indigo-600 dark:text-indigo-400">
-                    Ente
-                 <span className="text-yellow-400">Bus</span>
+                    Ente<span className="text-yellow-400">Bus</span>
               </span>
             </Link>
 
             {/* Mobile Actions */}
             <div className="flex md:hidden items-center gap-2">
-               {/* Mobile Dark Toggle */}
                <button onClick={toggleTheme} className="p-2 bg-gray-100 dark:bg-gray-800 rounded-lg text-gray-500 dark:text-gray-400">
                   {theme === 'dark' ? <Sun size={20} className="text-yellow-400"/> : <Moon size={20}/>}
                </button>
-
-               {user ? (
+               {user || admin ? (
                  <button onClick={handleLogout} className="p-2 bg-gray-100 dark:bg-gray-800 rounded-lg text-gray-500 dark:text-gray-400"><LogOut size={20}/></button>
                ) : (
                  <Link to="/login" className="bg-gray-900 dark:bg-gray-700 text-white px-4 py-2 rounded-lg text-xs font-bold">Login</Link>
@@ -74,57 +68,39 @@ export default function Navbar() {
             </div>
           </div>
 
-          {/* 2. MAIN NAVIGATION */}
+          {/* MAIN NAVIGATION */}
           <div className="flex flex-wrap justify-center gap-2">
             <NavItem to="/" icon={Home} label="Home" />
             
-            {user && (
-              <NavItem to="/search" icon={Search} label="Search" />
-            )}
-
+            {user && <NavItem to="/search" icon={Search} label="Search" />}
             <NavItem to="/schedule" icon={Calendar} label="Schedule" />
             <NavItem to="/prices" icon={IndianRupee} label="Prices" />
             <NavItem to="/about" icon={Info} label="About" />
 
-            {/* 2. ADDED SUPPORT LINK HERE */}
-            <Link 
-              to="/complaint" 
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-gray-600 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 transition-all duration-200"
-            >
-              <MessageSquareWarning size={18} /> Support
-            </Link>
-
+            {/* 👇 HIDE THIS BUTTON IF ADMIN IS LOGGED IN */}
+            {!admin && (
+              <Link 
+                to="/complaint" 
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-gray-600 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 transition-all duration-200"
+              >
+                <MessageSquareWarning size={18} /> Support
+              </Link>
+            )}
           </div>
 
-          {/* 3. RIGHT SIDE: AUTH, SCANNER & TOGGLE */}
+          {/* RIGHT SIDE */}
           <div className="hidden md:flex items-center gap-3">
-            
-            {/* Dark Mode Toggle (Desktop) */}
-            <button 
-              onClick={toggleTheme}
-              className="p-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 transition-all mr-1"
-              title="Toggle Theme"
-            >
+            <button onClick={toggleTheme} className="p-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 transition-all mr-1">
               {theme === 'dark' ? <Sun size={20} className="text-yellow-400"/> : <Moon size={20}/>}
             </button>
 
-            {/* SCAN TICKET BUTTON */}
-            <Link 
-              to="/verify" 
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm border transition-all mr-2
-                ${location.pathname === '/verify'
-                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-md'
-                  : 'bg-indigo-50 dark:bg-gray-800 text-indigo-700 dark:text-indigo-400 border-indigo-100 dark:border-gray-700 hover:bg-indigo-100 dark:hover:bg-gray-700'
-                }`}
-            >
-              <ScanLine size={18} />
-              <span>Scan Ticket</span>
+            <Link to="/verify" className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm border transition-all mr-2 ${location.pathname === '/verify' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-indigo-50 dark:bg-gray-800 text-indigo-700 dark:text-indigo-400 border-indigo-100 dark:border-gray-700 hover:bg-indigo-100 dark:hover:bg-gray-700'}`}>
+              <ScanLine size={18} /> <span>Scan Ticket</span>
             </Link>
 
             <div className="w-px h-8 bg-gray-200 dark:bg-gray-700 mx-1"></div>
 
             {admin ? (
-              // ADMIN VIEW
               <div className="flex items-center gap-2">
                 <Link to="/admin" className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md transition-all">
                   <LayoutDashboard size={16} /> Dashboard
@@ -134,7 +110,6 @@ export default function Navbar() {
                 </button>
               </div>
             ) : user ? (
-              // USER VIEW
               <div className="flex items-center gap-3">
                 <div className="text-right">
                   <p className="text-xs text-gray-400 font-bold uppercase">Welcome</p>
@@ -148,14 +123,9 @@ export default function Navbar() {
                 </button>
               </div>
             ) : (
-              // GUEST VIEW
               <div className="flex items-center bg-gray-100 dark:bg-gray-800 p-1 rounded-xl">
-                <Link to="/admin-login" className="px-4 py-2 rounded-lg text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition">
-                  Admin
-                </Link>
-                <Link to="/login" className="flex items-center gap-1 px-5 py-2 bg-white dark:bg-gray-700 rounded-lg text-sm font-bold text-gray-900 dark:text-white shadow-sm hover:shadow-md transition">
-                  Login <ChevronRight size={14} className="text-indigo-600 dark:text-indigo-400"/>
-                </Link>
+                <Link to="/admin-login" className="px-4 py-2 rounded-lg text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition">Admin</Link>
+                <Link to="/login" className="flex items-center gap-1 px-5 py-2 bg-white dark:bg-gray-700 rounded-lg text-sm font-bold text-gray-900 dark:text-white shadow-sm hover:shadow-md transition">Login <ChevronRight size={14} className="text-indigo-600 dark:text-indigo-400"/></Link>
               </div>
             )}
           </div>

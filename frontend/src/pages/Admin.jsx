@@ -1,16 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
-import { Shield, Plus, LogOut, Edit, Trash2, ClipboardList, Users, ArrowRight, History, Mail, Phone } from 'lucide-react';
+import { 
+  Shield, Plus, LogOut, Edit, Trash2, ClipboardList, 
+  Users, ArrowRight, History, Mail, Phone, MessageSquareWarning, CheckCircle 
+} from 'lucide-react';
 
 export default function Admin() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard' or 'manifest'
+  // 1. Added 'complaints' to activeTab state
+  const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard', 'manifest', or 'complaints'
   
   // Data State
   const [bookings, setBookings] = useState([]);
   const [buses, setBuses] = useState([]);
-  
+  const [complaints, setComplaints] = useState([]); // <--- New State for Complaints
+
   // Manifest State
   const [manifestBusId, setManifestBusId] = useState('');
   const [manifestDate, setManifestDate] = useState('');
@@ -24,9 +29,16 @@ export default function Admin() {
   const [isEditing, setIsEditing] = useState(false);
   const [editId, setEditId] = useState(null);
 
+  // API URL Constant
+  const API_URL = "https://entebus-api.onrender.com";
+
   useEffect(() => {
     if (!localStorage.getItem('admin')) navigate('/admin-login');
-    else { fetchBookings(); fetchBuses(); }
+    else { 
+      fetchBookings(); 
+      fetchBuses(); 
+      fetchComplaints(); // <--- Fetch complaints on load
+    }
   }, [navigate]);
 
   // --- HELPER: 12-Hour Clock ---
@@ -41,28 +53,45 @@ export default function Admin() {
   // --- API CALLS ---
   const fetchBookings = async () => {
     try {
-      const res = await axios.get('https://entebus-api.onrender.com/api/admin/bookings');
+      const res = await axios.get(`${API_URL}/api/admin/bookings`);
       setBookings(res.data);
     } catch (err) { console.error(err); }
   };
 
   const fetchBuses = async () => {
     try {
-      const res = await axios.get('https://entebus-api.onrender.com/api/buses');
+      const res = await axios.get(`${API_URL}/api/buses`);
       setBuses(res.data);
     } catch (err) { console.error(err); }
+  };
+
+  // 2. New Function to Fetch Complaints
+  const fetchComplaints = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/api/complaints/all`);
+      setComplaints(res.data);
+    } catch (err) { console.error("Error fetching complaints", err); }
+  };
+
+  // 3. New Function to Resolve Complaints
+  const handleResolveComplaint = async (id) => {
+    try {
+      await axios.put(`${API_URL}/api/complaints/resolve/${id}`);
+      fetchComplaints(); // Refresh list
+      alert("Issue marked as Resolved ✅");
+    } catch (err) { alert("Error updating status"); }
   };
   
   const handleBusSubmit = async (e) => {
     e.preventDefault();
     try {
       if (isEditing) {
-        await axios.put(`https://entebus-api.onrender.com/api/buses/${editId}`, formData);
+        await axios.put(`${API_URL}/api/buses/${editId}`, formData);
         alert('✅ Bus Updated Successfully!');
         setIsEditing(false); 
         setEditId(null);
       } else {
-        await axios.post('https://entebus-api.onrender.com/api/buses', formData);
+        await axios.post(`${API_URL}/api/buses`, formData);
         alert('✅ New Bus Added!');
       }
       setFormData({ name: '', registrationNumber: '', from: '', to: '', departureTime: '', price: '', driverName: '', driverContact: '' });
@@ -89,7 +118,7 @@ export default function Admin() {
   const handleDeleteBus = async (id) => {
     if (window.confirm("Are you sure you want to delete this bus route? This action cannot be undone.")) {
       try {
-        await axios.delete(`https://entebus-api.onrender.com/api/buses/${id}`);
+        await axios.delete(`${API_URL}/api/buses/${id}`);
         fetchBuses();
       } catch (err) { alert("Error deleting bus"); }
     }
@@ -98,7 +127,7 @@ export default function Admin() {
   const handleFetchManifest = async () => {
     if (!manifestBusId || !manifestDate) return alert("Please select both a Bus and a Date.");
     try {
-      const res = await axios.get(`https://entebus-api.onrender.com/api/admin/manifest?busId=${manifestBusId}&date=${manifestDate}`);
+      const res = await axios.get(`${API_URL}/api/admin/manifest?busId=${manifestBusId}&date=${manifestDate}`);
       setManifestData(res.data);
     } catch (err) { alert("Error fetching manifest data"); }
   };
@@ -121,7 +150,6 @@ export default function Admin() {
   ).sort((a, b) => a.seat - b.seat);
 
   return (
-    // Update 1: Main Background
     <div className="p-6 md:p-10 bg-gray-50 dark:bg-slate-900 min-h-screen transition-colors duration-300">
       
       {/* --- HEADER --- */}
@@ -130,11 +158,11 @@ export default function Admin() {
           <Shield className="text-red-600" size={32}/> Admin Panel
         </h1>
         
-        {/* Update 2: Tab Buttons */}
-        <div className="flex bg-white dark:bg-slate-800 p-1 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm transition-colors">
+        {/* TAB BUTTONS */}
+        <div className="flex bg-white dark:bg-slate-800 p-1 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm transition-colors overflow-x-auto">
            <button 
              onClick={() => setActiveTab('dashboard')} 
-             className={`px-6 py-2 rounded-lg font-bold transition-all 
+             className={`px-6 py-2 rounded-lg font-bold transition-all whitespace-nowrap
                ${activeTab==='dashboard' 
                  ? 'bg-indigo-600 text-white shadow-md' 
                  : 'text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
@@ -144,7 +172,7 @@ export default function Admin() {
            </button>
            <button 
              onClick={() => setActiveTab('manifest')} 
-             className={`px-6 py-2 rounded-lg font-bold transition-all 
+             className={`px-6 py-2 rounded-lg font-bold transition-all whitespace-nowrap
                ${activeTab==='manifest' 
                  ? 'bg-indigo-600 text-white shadow-md' 
                  : 'text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
@@ -152,9 +180,24 @@ export default function Admin() {
            >
              Manifest
            </button>
+           {/* 4. Added Complaints Tab Button */}
+           <button 
+             onClick={() => setActiveTab('complaints')} 
+             className={`px-6 py-2 rounded-lg font-bold transition-all flex items-center gap-2 whitespace-nowrap
+               ${activeTab==='complaints' 
+                 ? 'bg-indigo-600 text-white shadow-md' 
+                 : 'text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
+               }`}
+           >
+             <MessageSquareWarning size={16} /> Complaints
+             {complaints.filter(c => c.status === 'Pending').length > 0 && (
+               <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
+                 {complaints.filter(c => c.status === 'Pending').length}
+               </span>
+             )}
+           </button>
         </div>
 
-        {/* Update 3: Logout Button */}
         <button onClick={handleLogout} className="flex items-center gap-2 text-red-600 dark:text-red-400 font-bold bg-white dark:bg-slate-800 px-5 py-2.5 rounded-xl border border-red-100 dark:border-red-900/30 hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-200 transition-all shadow-sm">
           <LogOut size={18} /> Logout
         </button>
@@ -166,7 +209,6 @@ export default function Admin() {
           
           {/* QUICK ACTIONS */}
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-8">
-             {/* Update 4: Cards */}
              <Link to="/admin/history" className="p-6 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-sm hover:shadow-md transition flex flex-col items-center justify-center gap-3 text-center group cursor-pointer no-underline">
                 <div className="bg-orange-100 dark:bg-orange-900/30 p-3 rounded-full text-orange-600 dark:text-orange-400 group-hover:bg-orange-600 group-hover:text-white transition">
                    <History size={24}/>
@@ -179,7 +221,6 @@ export default function Admin() {
           </div>
 
           {/* BUS FORM */}
-          {/* Update 5: Form Container */}
           <div className="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 mb-10 transition-colors">
             <h3 className="text-xl font-bold mb-6 flex items-center gap-2 text-gray-800 dark:text-white">
               {isEditing ? <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg text-indigo-600 dark:text-indigo-400"><Edit size={24}/></div> : <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg text-green-600 dark:text-green-400"><Plus size={24}/></div>}
@@ -187,8 +228,6 @@ export default function Admin() {
             </h3>
             
             <form onSubmit={handleBusSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-5">
-              
-              {/* --- Reusable Input Style for Dark Mode --- */}
               {[
                 { label: 'Bus Name', value: 'name', placeholder: 'e.g. KSRTC Super Fast', col: 'md:col-span-2' },
                 { label: 'Registration Number', value: 'registrationNumber', placeholder: 'e.g. KL-15-A-1234', col: 'md:col-span-2' },
@@ -376,6 +415,65 @@ export default function Admin() {
           )}
         </div>
       )}
+
+      {/* --- TAB 3: COMPLAINTS (NEW) --- */}
+      {activeTab === 'complaints' && (
+        <div className="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 animate-in slide-in-from-right-4 duration-500 transition-colors">
+          <div className="flex items-center gap-3 mb-8 pb-6 border-b border-gray-100 dark:border-slate-700">
+            <div className="bg-yellow-100 dark:bg-yellow-900/30 p-3 rounded-xl text-yellow-600 dark:text-yellow-400">
+              <MessageSquareWarning size={32}/> 
+            </div>
+            <div>
+              <h3 className="text-2xl font-black text-gray-900 dark:text-white">User Complaints</h3>
+              <p className="text-gray-500 dark:text-slate-400">Review and resolve issues submitted by passengers.</p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            {complaints.length > 0 ? (
+              complaints.map((c) => (
+                <div key={c._id} className="bg-gray-50 dark:bg-slate-900 p-6 rounded-xl border border-gray-200 dark:border-slate-700 flex flex-col md:flex-row justify-between items-start gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className={`px-2 py-0.5 rounded text-xs font-bold border ${c.status === 'Resolved' ? 'bg-green-100 border-green-200 text-green-700 dark:bg-green-900/30 dark:border-green-800 dark:text-green-400' : 'bg-yellow-100 border-yellow-200 text-yellow-700 dark:bg-yellow-900/30 dark:border-yellow-800 dark:text-yellow-400'}`}>
+                        {c.status}
+                      </span>
+                      <span className="text-sm text-gray-500 dark:text-slate-400 flex items-center gap-1">
+                         • {new Date(c.date).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <h3 className="font-bold text-lg text-gray-900 dark:text-white">{c.category}</h3>
+                    <p className="text-gray-600 dark:text-slate-300 mt-2 mb-4 bg-white dark:bg-slate-800 p-3 rounded-lg border border-gray-100 dark:border-slate-700 italic">
+                      "{c.message}"
+                    </p>
+                    <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-slate-400">
+                      <span className="flex items-center gap-1"><Users size={14}/> {c.name}</span>
+                      <span className="flex items-center gap-1"><Mail size={14}/> {c.email}</span>
+                    </div>
+                  </div>
+
+                  {c.status === 'Pending' && (
+                    <button 
+                      onClick={() => handleResolveComplaint(c._id)}
+                      className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-green-700 transition shadow-sm"
+                    >
+                      <CheckCircle size={16} /> Mark Resolved
+                    </button>
+                  )}
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-12 text-gray-500 dark:text-slate-400">
+                <div className="bg-gray-100 dark:bg-slate-700 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle size={32} className="text-gray-400 dark:text-slate-500"/>
+                </div>
+                <p>No complaints found. Good job!</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
