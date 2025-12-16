@@ -7,7 +7,7 @@ const jwt = require('jsonwebtoken');
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
 
-// --- ✅ NEW: IMPORT COMPLAINT ROUTES ---
+// --- ✅ IMPORT COMPLAINT ROUTES ---
 const complaintRoutes = require('./routes/complaintRoutes'); 
 
 dotenv.config();
@@ -16,6 +16,7 @@ const app = express();
 app.use(express.json());
 
 // --- ✅ UPDATED CORS CONFIGURATION ---
+// This setting allows requests from any source (*) and allows credentials.
 app.use(cors({
   origin: "*",
   credentials: true
@@ -28,7 +29,7 @@ mongoose.connect(process.env.MONGO_URI)
 
 // --- RAZORPAY CONFIG ---
 const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_Rp42r0Aqd3EZrY', // Use Env var if available
+  key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_Rp42r0Aqd3EZrY', 
   key_secret: process.env.RAZORPAY_KEY_SECRET || '10FbavAMxpgDor4tQk1ARVGc',
 });
 
@@ -48,7 +49,7 @@ const busSchema = new mongoose.Schema({
   registrationNumber: String,
   from: String,
   to: String,
-  departureTime: String, // "14:30" (24h)
+  departureTime: String,
   price: Number,
   driverName: String,
   driverContact: String,
@@ -63,7 +64,7 @@ const bookingSchema = new mongoose.Schema({
   customerName: String,
   customerPhone: String,
   bookingDate: { type: Date, default: Date.now },
-  travelDate: String,     // "YYYY-MM-DD"
+  travelDate: String,
   paymentId: String,
   orderId: String,
   amount: Number,
@@ -73,7 +74,7 @@ const Booking = mongoose.model('Booking', bookingSchema);
 
 // --- ROUTES ---
 
-// ✅ NEW: REGISTER COMPLAINT ROUTES
+// ✅ REGISTER COMPLAINT ROUTES
 app.use('/api/complaints', complaintRoutes); 
 
 // 1. Auth

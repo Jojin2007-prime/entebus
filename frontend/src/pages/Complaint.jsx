@@ -7,6 +7,9 @@ export default function Complaint() {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('user'));
 
+  // ✅ UPDATED: Your actual Backend URL is now here
+  const API_URL = "https://entebus-api.onrender.com"; 
+
   const [formData, setFormData] = useState({
     name: user ? user.name : '',
     email: user ? user.email : '',
@@ -17,10 +20,7 @@ export default function Complaint() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      // Note: Ensure your backend URL is correct here (localhost for dev, render link for prod)
-      // Using relative path '/api' if you set up proxy, otherwise put your full backend URL
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      
+      // Sending the complaint to your Render backend
       await axios.post(`${API_URL}/api/complaints/add`, {
         ...formData,
         userId: user ? user._id : null
@@ -28,8 +28,8 @@ export default function Complaint() {
       toast.success("Complaint submitted successfully!");
       navigate('/');
     } catch (err) {
-      toast.error("Failed to submit complaint.");
-      console.error(err);
+      console.error("Submission Error:", err);
+      toast.error("Failed to submit complaint. Check internet connection.");
     }
   };
 
