@@ -56,7 +56,7 @@ export default function Navbar() {
               </div>
 
               <span className="text-indigo-600 dark:text-indigo-400">
-                    E-<span className="text-yellow-400">Bus</span>
+                    Ente<span className="text-yellow-400">Bus</span>
               </span>
             </Link>
 
