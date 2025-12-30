@@ -1,11 +1,13 @@
 import React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { 
-  Bus, User, LogOut, ScanLine, History, Calendar, Home, 
+  User, LogOut, ScanLine, History, Calendar, Home, 
   LayoutDashboard, Search, IndianRupee, Info, ChevronRight, 
   Sun, Moon, MessageSquareWarning 
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
+// ✅ Import your custom logo
+import BusLogo from './BusLogo'; 
 
 export default function Navbar() {
   const navigate = useNavigate();
@@ -44,12 +46,15 @@ export default function Navbar() {
       <div className="container mx-auto px-4 py-3">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           
-          {/* LOGO */}
+          {/* LOGO SECTION */}
           <div className="flex justify-between items-center">
             <Link to="/" className="text-2xl font-black text-gray-900 dark:text-white flex items-center gap-2 tracking-tight">
-              <div className="bg-gradient-to-tr from-indigo-600 to-purple-400 text-white p-2 rounded-xl shadow-md">
-                <Bus size={26} />
+              
+              {/* ✅ REPLACED: Old Icon with New Custom BusLogo */}
+              <div className="p-1">
+                 <BusLogo />
               </div>
+
               <span className="text-indigo-600 dark:text-indigo-400">
                     Ente<span className="text-yellow-400">Bus</span>
               </span>
@@ -75,9 +80,8 @@ export default function Navbar() {
             {user && <NavItem to="/search" icon={Search} label="Search" />}
             <NavItem to="/schedule" icon={Calendar} label="Schedule" />
             <NavItem to="/prices" icon={IndianRupee} label="Prices" />
-            <NavItem to="/about" icon={Info} label="About" />
 
-            {/* 👇 UPDATED CONDITION: Only show if User is Logged In AND Not Admin */}
+            {/* ✅ SUPPORT BUTTON (Placed BEFORE About) */}
             {user && !admin && (
               <Link 
                 to="/complaint" 
@@ -86,9 +90,12 @@ export default function Navbar() {
                 <MessageSquareWarning size={18} /> Support
               </Link>
             )}
+
+            {/* ABOUT BUTTON (Placed LAST) */}
+            <NavItem to="/about" icon={Info} label="About" />
           </div>
 
-          {/* RIGHT SIDE */}
+          {/* RIGHT SIDE ACTIONS */}
           <div className="hidden md:flex items-center gap-3">
             <button onClick={toggleTheme} className="p-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 transition-all mr-1">
               {theme === 'dark' ? <Sun size={20} className="text-yellow-400"/> : <Moon size={20}/>}
