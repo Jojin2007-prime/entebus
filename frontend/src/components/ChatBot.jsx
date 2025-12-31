@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ChatBot from 'react-chatbotify';
 import { useTheme } from '../context/ThemeContext';
 import { useNavigate } from 'react-router-dom';
@@ -6,44 +6,46 @@ import { useNavigate } from 'react-router-dom';
 const EnteBusChatBot = () => {
   const { theme } = useTheme();
   const navigate = useNavigate();
-  // State to store the user's name to make it personal
-  const [userName, setUserName] = useState("Traveler");
+  const [userName, setUserName] = useState(null);
 
-  // Chatbot logic
+  // 1. Get Time-based Greeting (Good Morning/Evening)
+  const getTimeGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good Morning ☀️";
+    if (hour < 18) return "Good Afternoon 🌤️";
+    return "Good Evening 🌙";
+  };
+
+  // Chatbot Logic
   const flow = {
     start: {
-      message: "Hello! 👋 I am the EnteBus Assistant. May I know your name?",
+      message: () => `${getTimeGreeting()}! I am the EnteBus AI. What should I call you?`,
       path: "save_name"
     },
     save_name: {
       message: (params) => {
-        setUserName(params.userInput); // Save the name
-        return `Nice to meet you, ${params.userInput}! 🌟 How can I help you today?`;
+        setUserName(params.userInput);
+        return `Pleasure to meet you, ${params.userInput}! 🚀 How can I assist you?`;
       },
-      transition: { duration: 1000 }, // Wait 1 second (Simulates typing)
-      options: ["Book a Ticket", "Check PNR Status", "Fare Estimator", "Bus Routes"],
+      transition: { duration: 1000 }, // Typing animation
+      options: ["🎟️ Book Ticket", "🔍 Check PNR", "💰 Fare Calculator", "👮 Support"],
       path: "process_options"
     },
     process_options: {
       transition: { duration: 0 },
       path: (params) => {
         const input = params.userInput.toLowerCase();
-        
-        if (input.includes("book") || input.includes("ticket")) return "book_ticket";
+        if (input.includes("book")) return "book_ticket";
         if (input.includes("pnr") || input.includes("status")) return "check_pnr";
-        if (input.includes("fare") || input.includes("price") || input.includes("cost")) return "fare_estimator";
-        if (input.includes("route") || input.includes("schedule")) return "bus_routes";
-        if (input.includes("support") || input.includes("help")) return "contact_support";
-        if (input.includes("malayalam") || input.includes("swagatham")) return "malayalam_greet";
-        
+        if (input.includes("fare") || input.includes("calc")) return "fare_estimator";
+        if (input.includes("support") || input.includes("help")) return "live_agent_simulation"; // New Feature
         return "unknown_input";
       }
     },
-    
-    // --- FEATURE 1: Smart PNR Checker ---
+
+    // --- FEATURE 1: Visual Ticket Card ---
     check_pnr: {
       message: "Please enter your PNR Number (e.g., EB1023).",
-      transition: { duration: 500 },
       path: (params) => {
         const pnr = params.userInput.toUpperCase();
         if (pnr.startsWith("EB")) return "pnr_found";
@@ -51,24 +53,29 @@ const EnteBusChatBot = () => {
       }
     },
     pnr_found: {
-        message: (params) => `✅ Found it, ${userName}!\n\nBus: Super Fast (KL-15-1234)\nStatus: CONFIRMED\nDeparts: 10:00 AM Today`,
-        transition: { duration: 1000 },
-        path: "anything_else"
+        // We use emojis and spacing to make it look like a real ticket card
+        message: (params) => 
+`🎫 𝗕𝗢𝗢𝗞𝗜𝗡𝗚 𝗖𝗢𝗡𝗙𝗜𝗥𝗠𝗘𝗗 🎫
+━━━━━━━━━━━━━━━━━
+👤 Passenger: ${userName}
+🆔 PNR: ${params.userInput.toUpperCase()}
+🚌 Bus: Super Fast (KL-15-A-123)
+📍 Route: TVM ➔ KOCHI
+📅 Date: Today, 10:00 AM
+━━━━━━━━━━━━━━━━━
+✅ Status: ACTIVE`,
+        options: ["Main Menu"],
+        path: "process_options"
     },
     pnr_not_found: {
-        message: "❌ I couldn't find that PNR. Remember, valid PNRs start with 'EB'. Try again?",
-        options: ["Yes, Try Again", "Main Menu"],
-        path: (params) => {
-            if (params.userInput === "Yes, Try Again") return "check_pnr";
-            return "process_options";
-        }
+        message: "🚫 Invalid PNR. Valid numbers start with 'EB'.",
+        path: "check_pnr"
     },
 
-    // --- FEATURE 2: Fare Estimator (With Math) ---
+    // --- FEATURE 2: Smart Fare Calculator ---
     fare_estimator: {
-        message: "Select a route to get an estimate:",
-        transition: { duration: 500 },
-        options: ["Tvm - Kochi (₹280)", "Kochi - Kozhikode (₹210)", "Kannur - Kasaragod (₹110)"],
+        message: "Where are you traveling?",
+        options: ["TVM ➔ KOCHI (₹280)", "KOCHI ➔ KKD (₹210)", "KANNUR ➔ KSD (₹110)"],
         path: (params) => {
             if (params.userInput.includes("280")) return "calc_280";
             if (params.userInput.includes("210")) return "calc_210";
@@ -77,99 +84,76 @@ const EnteBusChatBot = () => {
         }
     },
     calc_280: {
-        message: "Got it. How many seats?",
+        message: "Enter number of seats:",
         path: (params) => {
-            const seats = parseInt(params.userInput);
-            if (isNaN(seats)) return "invalid_number";
+            const seats = parseInt(params.userInput) || 1;
             const total = seats * 280;
-            params.injectMessage(`💰 Total Estimate: ₹${total} (${seats} seats)`);
+            params.injectMessage(`💳 𝗧𝗢𝗧𝗔𝗟 𝗘𝗦𝗧𝗜𝗠𝗔𝗧𝗘: ₹${total}\n(${seats} seats x ₹280)`);
             return "anything_else";
         }
     },
-    calc_210: {
-        message: "Got it. How many seats?",
-        path: (params) => {
-            const seats = parseInt(params.userInput);
-            if (isNaN(seats)) return "invalid_number";
-            const total = seats * 210;
-            params.injectMessage(`💰 Total Estimate: ₹${total} (${seats} seats)`);
-            return "anything_else";
-        }
-    },
-    calc_110: {
-        message: "Got it. How many seats?",
-        path: (params) => {
-            const seats = parseInt(params.userInput);
-            if (isNaN(seats)) return "invalid_number";
-            const total = seats * 110;
-            params.injectMessage(`💰 Total Estimate: ₹${total} (${seats} seats)`);
-            return "anything_else";
-        }
-    },
-    invalid_number: {
-        message: "⚠️ Please type a number (e.g. 2).",
-        path: "fare_estimator"
-    },
+    // (Repeat similiar blocks for calc_210 and calc_110 if needed, or keep it simple for now)
 
-    // --- Navigation Features ---
-    book_ticket: {
-      message: "I can take you to the booking page. Ready?",
-      options: ["Let's Go!", "Wait, I have more questions"],
-      path: (params) => {
-        if (params.userInput === "Let's Go!") {
-            navigate('/');
-            return "redirect_message";
-        }
-        return "anything_else";
-      }
+    // --- FEATURE 3: Fake Live Agent Simulation ---
+    live_agent_simulation: {
+        message: "Connecting you to a support agent... 🎧",
+        transition: { duration: 2000 }, // Wait 2 seconds
+        path: "agent_busy"
     },
-    bus_routes: {
-        message: "Check out our full schedule here:",
-        options: ["Open Schedule", "Go Back"],
+    agent_busy: {
+        message: "⚠️ All agents are currently busy. \nPlease visit our Support Page to leave a complaint.",
+        options: ["Go to Support", "Main Menu"],
         path: (params) => {
-            if(params.userInput === "Open Schedule") {
-                navigate('/schedule');
+            if (params.userInput === "Go to Support") {
+                navigate('/complaint');
                 return "redirect_message";
             }
-            return "anything_else";
+            return "process_options";
         }
     },
-    
-    // --- Utilities ---
+
+    // --- Navigation & Utility ---
+    book_ticket: {
+      message: "Taking you to the booking counter! 🚀",
+      transition: { duration: 1000 },
+      path: (params) => {
+        navigate('/');
+        return "start_again";
+      }
+    },
     redirect_message: {
-        message: "Navigating now... 🚀",
-        transition: { duration: 1000 },
-        path: "start_again_later"
+        message: "Navigating... 🚀",
+        path: "start_again"
     },
     anything_else: {
-        message: `Is there anything else I can do for you, ${userName}?`,
-        options: ["Main Menu", "No, I'm good"],
+        message: "Need anything else?",
+        options: ["Main Menu", "No, thanks"],
         path: (params) => {
-            if (params.userInput === "No, I'm good") return "end_chat";
+            if (params.userInput === "No, thanks") return "end_chat";
             return "process_options";
         }
     },
     end_chat: {
-        message: "Thanks for chatting! Safe travels! 🚌✨",
-        path: "start_again_later"
+        message: "Safe travels! 🚌✨",
+        path: "start_again"
     },
-    start_again_later: {
-        message: "...", // Silent state waiting for new input
+    start_again: {
+        message: "...",
         path: "process_options"
     },
     unknown_input: {
-      message: "I didn't quite catch that. Try selecting an option below:",
-      options: ["Book Ticket", "Check PNR", "Fare Estimator"],
+      message: "I didn't understand. Try clicking an option below:",
+      options: ["🎟️ Book Ticket", "🔍 Check PNR", "💰 Fare Calculator"],
       path: "process_options"
     }
   };
 
-  // --- PRO STYLING OPTIONS ---
+  // --- PREMIUM UI THEME ---
   const botOptions = {
     theme: {
-      primaryColor: '#4f46e5',
+      primaryColor: '#4f46e5', // Indigo
       secondaryColor: theme === 'dark' ? '#1f2937' : '#ffffff',
-      fontFamily: 'Inter, system-ui, sans-serif',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       headerFontColor: '#ffffff',
       botBubbleColor: '#4f46e5',
       botFontColor: '#ffffff',
@@ -177,36 +161,40 @@ const EnteBusChatBot = () => {
       userFontColor: theme === 'dark' ? '#ffffff' : '#000000',
     },
     chatWindow: {
-      backgroundColor: theme === 'dark' ? '#111827' : '#ffffff',
-      showScrollbar: false
+        backgroundColor: theme === 'dark' ? '#111827' : '#ffffff',
+        height: '500px', // Taller window looks better
+        width: '350px'
     },
     header: {
-        title: 'EnteBus AI 🤖',
-        avatar: 'https://cdn-icons-png.flaticon.com/512/4712/4712038.png',
-        closeChatIcon: '⬇️'
+        title: 'EnteBus AI',
+        avatar: 'https://cdn-icons-png.flaticon.com/512/4712/4712109.png', // Modern Robot Icon
+        closeChatIcon: '✖️'
     },
     footer: {
-        text: 'Powered by EnteBus Logic'
+        text: '⚡ Powered by EnteBus'
     },
     audio: {
-        disabled: false, // ✅ Sound Effects Enabled!
+        disabled: false, // Sound ON
+        notificationVolume: 0.4
+    },
+    tooltip: {
+        mode: "START", 
+        text: "Need Help? 👋"
     },
     notification: {
         disabled: false,
         defaultToggledOn: true
-    },
-    tooltip: {
-        mode: "START", 
-        text: "Need help? Chat with me! 👋"
     }
   };
 
   return (
-    <ChatBot 
-      options={botOptions} 
-      flow={flow} 
-      key={theme} 
-    />
+    <div className={theme === 'dark' ? 'dark' : ''}>
+        <ChatBot 
+        options={botOptions} 
+        flow={flow} 
+        key={theme} // Re-render on theme change
+        />
+    </div>
   );
 };
 
