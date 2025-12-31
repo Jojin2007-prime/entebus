@@ -75,6 +75,7 @@ export default function TicketVerifier({ isAdmin = false }) {
     const scanFrame = () => {
         if (videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA) {
             const canvas = canvasRef.current;
+            if (!canvas) return;
             const context = canvas.getContext('2d', { willReadFrequently: true });
             canvas.height = videoRef.current.videoHeight;
             canvas.width = videoRef.current.videoWidth;
@@ -106,13 +107,11 @@ export default function TicketVerifier({ isAdmin = false }) {
                 canvas.width = img.width; canvas.height = img.height;
                 ctx.imageSmoothingEnabled = false;
 
-                // TRY 1: High Contrast Grayscale
                 ctx.filter = 'contrast(2.5) grayscale(1)';
                 ctx.drawImage(img, 0, 0);
                 let data = ctx.getImageData(0, 0, canvas.width, canvas.height);
                 let code = jsQR(data.data, data.width, data.height, { inversionAttempts: "attemptBoth" });
 
-                // TRY 2: Hard Thresholding (For very old/blurry tickets)
                 if (!code) {
                     const pixels = data.data;
                     for (let i = 0; i < pixels.length; i += 4) {
@@ -140,19 +139,35 @@ export default function TicketVerifier({ isAdmin = false }) {
         } else { setError("Invalid QR format."); }
     };
 
+    // --- ✅ UPDATED VERIFICATION WITH OWNERSHIP CHECK ---
     const verifyTicket = async (id) => {
-        setLoading(true);
+        setLoading(true); 
+        setTicketData(null); 
+        setError(''); 
+        setTicketStatus(null);
+        
         try {
-            const res = await axios.get(`https://entebus-api.onrender.com/api/verify/${id}`);
-            const ticket = res.data;
-            const user = JSON.parse(localStorage.getItem('user'));
+            // 1. Get the currently logged-in user from localStorage
+            const storedUser = JSON.parse(localStorage.getItem('user')); 
 
-            // Ownership check for Users, Admin bypasses this
-            if (!isAdmin && user && ticket.customerEmail !== user.email) {
-                setError("❌ Access Denied: This ticket is not yours.");
-                setLoading(false); return;
+            if (!storedUser && !isAdmin) {
+                setError("❌ Please log in to verify your ticket.");
+                setLoading(false);
+                return;
             }
 
+            // 2. Fetch the ticket data from Render API
+            const res = await axios.get(`https://entebus-api.onrender.com/api/verify/${id}`);
+            const ticket = res.data;
+
+            // 3. 🔐 OWNERSHIP SECURITY CHECK
+            if (!isAdmin && ticket.customerEmail !== storedUser.email) {
+                setError("❌ Access Denied: This ticket belongs to another passenger.");
+                setLoading(false);
+                return;
+            }
+
+            // 4. DATE VALIDITY CHECK
             const travelDate = new Date(ticket.travelDate);
             const today = new Date();
             today.setHours(0, 0, 0, 0);
@@ -160,8 +175,13 @@ export default function TicketVerifier({ isAdmin = false }) {
 
             setTicketStatus(travelDate < today ? 'expired' : 'valid');
             setTicketData(ticket);
-        } catch (err) { setError("❌ Ticket not found."); }
-        finally { setLoading(false); }
+
+        } catch (err) { 
+            console.error("Verification error:", err);
+            setError('❌ Invalid Ticket ID or Ticket Not Found'); 
+        } finally { 
+            setLoading(false); 
+        }
     };
 
     return (
@@ -184,7 +204,6 @@ export default function TicketVerifier({ isAdmin = false }) {
 
             {!ticketData && !loading && !error && !isCameraActive && (
                 <div className="w-full max-w-sm space-y-6">
-                    {/* Camera Selection Dropdown */}
                     <div className="relative group">
                         <label className="text-xs font-black text-gray-500 uppercase ml-2 mb-2 block">Select Camera Source</label>
                         <select 
@@ -209,7 +228,6 @@ export default function TicketVerifier({ isAdmin = false }) {
                 </div>
             )}
 
-            {/* Verification Result Card */}
             {ticketData && (
                 <div className="w-full max-w-md bg-white text-gray-900 rounded-[2.5rem] overflow-hidden shadow-2xl animate-in zoom-in">
                     <div className={`${ticketStatus === 'valid' ? 'bg-green-600' : 'bg-orange-500'} p-6 text-white text-center font-black text-xl tracking-wide`}>
