@@ -4,7 +4,7 @@ import jsQR from 'jsqr';
 import { 
   QrCode, CheckCircle, XCircle, Loader, Bus, 
   User, ImageIcon, RefreshCw,
-  X, AlertTriangle, Download, Calendar, MapPin, StopCircle, Camera, ChevronDown
+  AlertTriangle, Download, Calendar, MapPin, StopCircle, Camera, ChevronDown 
 } from 'lucide-react';
 
 export default function TicketVerifier() {
@@ -24,77 +24,84 @@ export default function TicketVerifier() {
     const canvasRef = useRef(null);
     const requestRef = useRef(null);
 
-    // --- 1. INITIALIZE HARDWARE (Unlock labels & list lenses) ---
-    const loadCameras = async () => {
+    // --- 1. INITIALIZE HARDWARE & UNLOCK LENS NAMES ---
+    const initHardware = async () => {
         try {
             setError('');
-            // Trigger permission popup to unlock device names (labels)
+            // Permission Handshake: Open a stream to unlock device labels
             const stream = await navigator.mediaDevices.getUserMedia({ video: true });
             const devices = await navigator.mediaDevices.enumerateDevices();
             const videoDevices = devices.filter(device => device.kind === 'videoinput');
             
             setCameras(videoDevices);
             
-            // Default to the primary rear camera if found, otherwise last in list
-            if (videoDevices.length > 0 && !selectedCamera) {
+            // Auto-select: Prefer 'back' camera for scanning
+            if (videoDevices.length > 0) {
                 const backCam = videoDevices.find(dev => 
                     dev.label.toLowerCase().includes('back') || 
-                    dev.label.toLowerCase().includes('rear') ||
-                    dev.label.toLowerCase().includes('environment')
+                    dev.label.toLowerCase().includes('rear')
                 ) || videoDevices[videoDevices.length - 1];
                 
                 setSelectedCamera(backCam.deviceId);
             }
-            // Stop temporary stream
+
+            // Close handshake stream
             stream.getTracks().forEach(track => track.stop());
         } catch (err) {
-            console.error("Hardware initialization error:", err);
-            setError("Camera permission denied. Please allow camera access in browser settings.");
+            console.error("Hardware Init Error:", err);
+            setError("Camera permission denied. Please enable it in browser settings.");
         }
     };
 
     useEffect(() => {
-        loadCameras();
+        initHardware();
     }, []);
 
-    // --- 2. START THE CHOSEN CAMERA STREAM ---
+    // --- 2. START THE CHOSEN CAMERA ---
     const startCamera = async () => {
-        if (!selectedCamera) return setError("No camera detected. Try refreshing.");
+        if (!selectedCamera) return setError("No camera detected.");
         
         setIsCameraActive(true);
         setError('');
         setTicketData(null);
         
-        try {
-            const constraints = {
-                video: { 
-                    deviceId: { exact: selectedCamera },
-                    width: { ideal: 1920 }, // High resolution for sharp QR detection
-                    height: { ideal: 1080 }
+        // Delay to ensure DOM elements are rendered
+        setTimeout(async () => {
+            try {
+                const constraints = {
+                    video: { 
+                        deviceId: { exact: selectedCamera },
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }
+                };
+                
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                if (videoRef.current) {
+                    videoRef.current.srcObject = stream;
+                    videoRef.current.setAttribute("playsinline", "true"); // Fix for iOS Safari
+                    videoRef.current.play();
+                    requestRef.current = requestAnimationFrame(scanLoop);
                 }
-            };
-            const stream = await navigator.mediaDevices.getUserMedia(constraints);
-            if (videoRef.current) {
-                videoRef.current.srcObject = stream;
-                // Kick off the scan engine loop
-                requestRef.current = requestAnimationFrame(scanFrame);
+            } catch (err) {
+                console.error("Stream Error:", err);
+                setError("Failed to start this lens. Try picking a different one.");
+                setIsCameraActive(false);
             }
-        } catch (err) {
-            setError("The selected lens could not start. Try another one.");
-            setIsCameraActive(false);
-        }
+        }, 300);
     };
 
     const stopCamera = () => {
         setIsCameraActive(false);
+        if (requestRef.current) cancelAnimationFrame(requestRef.current);
         if (videoRef.current && videoRef.current.srcObject) {
             videoRef.current.srcObject.getTracks().forEach(track => track.stop());
+            videoRef.current.srcObject = null;
         }
-        if (requestRef.current) cancelAnimationFrame(requestRef.current);
     };
 
-    // --- 3. THE HIGH-PERFORMANCE SCAN ENGINE ---
-    const scanFrame = () => {
+    // --- 3. THE HIGH-ACCURACY SCAN ENGINE ---
+    const scanLoop = () => {
         if (!isCameraActive) return;
 
         if (videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA) {
@@ -102,33 +109,30 @@ export default function TicketVerifier() {
             if (!canvas) return;
             const context = canvas.getContext('2d', { willReadFrequently: true });
             
-            // Ensure canvas matches high-res video source
             canvas.height = videoRef.current.videoHeight;
             canvas.width = videoRef.current.videoWidth;
             
-            // Image Enhancement for Live Feed
-            context.filter = 'brightness(1.1) contrast(1.1)';
+            // Frame Processing: Boost contrast to help pattern detection
+            context.filter = 'contrast(1.2) brightness(1.1)';
             context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
             
             const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
             const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: "attemptBoth" });
 
             if (code) {
-                // Look for standard 24-character MongoDB ID
                 const idMatch = code.data.match(/[a-f\d]{24}/i);
                 if (idMatch) {
                     stopCamera();
                     verifyTicket(idMatch[0]);
-                    return; // Exit loop on success
+                    return;
                 }
             }
         }
-        // Keep looping
-        requestRef.current = requestAnimationFrame(scanFrame);
+        requestRef.current = requestAnimationFrame(scanLoop);
     };
 
-    // --- 4. ACCURATE IMAGE UPLOAD (Iterative Thresholding) ---
-    const handleFileUpload = async (e) => {
+    // --- 4. IMAGE UPLOAD REPAIR (For Screenshots) ---
+    const handleFileUpload = (e) => {
         const file = e.target.files[0];
         if (!file) return;
         setLoading(true); setError('');
@@ -136,18 +140,18 @@ export default function TicketVerifier() {
         const reader = new FileReader();
         reader.onload = (event) => {
             const img = new Image();
-            img.onload = async () => {
+            img.onload = () => {
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
                 canvas.width = img.width; canvas.height = img.height;
                 
-                // PASS 1: Grayscale & Contrast
+                // Pass 1: High Contrast Grayscale
                 ctx.filter = 'contrast(2.5) grayscale(1)';
                 ctx.drawImage(img, 0, 0);
                 let data = ctx.getImageData(0, 0, canvas.width, canvas.height);
                 let code = jsQR(data.data, data.width, data.height, { inversionAttempts: "attemptBoth" });
 
-                // PASS 2: Hard Binarization (Deep repair for blurry/dark shots)
+                // Pass 2: Binarization Repair
                 if (!code) {
                     const pixels = data.data;
                     for (let i = 0; i < pixels.length; i += 4) {
@@ -163,7 +167,7 @@ export default function TicketVerifier() {
                     const idMatch = code.data.match(/[a-f\d]{24}/i);
                     if (idMatch) verifyTicket(idMatch[0]);
                 } else {
-                    setError("QR Code not found. Please use a high-quality screenshot.");
+                    setError("QR Code not detected. Use a sharper image.");
                 }
                 setLoading(false);
             };
@@ -172,148 +176,147 @@ export default function TicketVerifier() {
         reader.readAsDataURL(file);
     };
 
-    // --- 5. VERIFICATION LOGIC (Displaying Bus Name) ---
+    // --- 5. GLOBAL VERIFICATION & BUS DISPLAY ---
     const verifyTicket = async (id) => {
-        setLoading(true); setTicketData(null); setError(''); setTicketStatus(null);
+        setLoading(true); setTicketData(null); setError('');
         try {
             const res = await axios.get(`https://entebus-api.onrender.com/api/verify/${id}`);
             const ticket = res.data;
             
             const travelDate = new Date(ticket.travelDate);
             const today = new Date();
-            today.setHours(0, 0, 0, 0); travelDate.setHours(0, 0, 0, 0);
-
+            today.setHours(0,0,0,0); travelDate.setHours(0,0,0,0);
+            
             setTicketStatus(travelDate < today ? 'expired' : 'valid');
             setTicketData(ticket);
-        } catch (err) { 
-            setError("❌ Ticket not found in Ente Bus database."); 
-        } finally { 
-            setLoading(false); 
+        } catch (err) {
+            setError("❌ Ticket record not found in database.");
+        } finally {
+            setLoading(false);
         }
     };
 
+    const downloadTicket = async (id) => {
+        setDownloading(true);
+        try {
+            const res = await axios.get(`https://entebus-api.onrender.com/api/tickets/download/${id}`, { responseType: 'blob' });
+            const url = window.URL.createObjectURL(new Blob([res.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `EnteBus_Ticket_${id}.jpg`);
+            document.body.appendChild(link);
+            link.click();
+            setDownloading(false);
+        } catch (e) { setDownloading(false); }
+    };
+
     return (
-        <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-6 font-sans">
+        <div className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-6 font-sans">
             
-            <header className="text-center mb-10 animate-in fade-in duration-700">
-                <div className="bg-indigo-600/20 p-5 rounded-full w-fit mx-auto mb-4 border border-indigo-500/30 shadow-[0_0_40px_rgba(79,70,229,0.3)]">
+            {/* Header */}
+            <header className="text-center mb-10">
+                <div className="bg-indigo-600/20 p-5 rounded-full w-fit mx-auto mb-4 border border-indigo-500/30">
                     <QrCode className="text-indigo-500" size={50} />
                 </div>
                 <h2 className="text-3xl font-black tracking-tight">Ente Bus Verifier</h2>
-                <p className="text-gray-500 text-sm mt-1">Conductor Boarding System</p>
+                <p className="text-slate-400 text-sm">Professional Boarding Scanner</p>
             </header>
 
-            {/* LIVE CAMERA MODAL OVERLAY */}
+            {/* FULL SCREEN SCANNER */}
             {isCameraActive && (
                 <div className="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center p-4">
-                    <div className="relative w-full max-w-md aspect-square rounded-[3rem] border-4 border-indigo-500 overflow-hidden shadow-[0_0_80px_#4f46e5]">
-                        <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
+                    <div className="relative w-full max-w-md aspect-square rounded-[2.5rem] border-4 border-indigo-500 overflow-hidden bg-slate-800">
+                        <video ref={videoRef} playsInline className="w-full h-full object-cover" />
                         <canvas ref={canvasRef} className="hidden" />
                         
-                        {/* Scanning HUD Overlay */}
-                        <div className="absolute inset-0 border-[60px] border-black/50"></div>
+                        <div className="absolute inset-0 border-[50px] border-black/50"></div>
                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 border-2 border-indigo-400 rounded-3xl animate-pulse"></div>
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-1 bg-indigo-500 shadow-[0_0_20px_#4f46e5]"></div>
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-1 bg-indigo-500 shadow-[0_0_15px_#4f46e5]"></div>
                     </div>
-                    <button onClick={stopCamera} className="mt-12 bg-red-600 hover:bg-red-700 px-12 py-4 rounded-2xl font-black flex items-center gap-3 active:scale-95 transition-all shadow-xl shadow-red-900/40">
-                        <StopCircle size={24} /> Stop Scanning
+                    <button onClick={stopCamera} className="mt-12 bg-red-600 hover:bg-red-700 px-12 py-4 rounded-2xl font-black flex items-center gap-3 transition-all active:scale-95 shadow-xl">
+                        <StopCircle size={24} /> Close Scanner
                     </button>
                 </div>
             )}
 
+            {/* ACTION DASHBOARD */}
             {!ticketData && !loading && !error && !isCameraActive && (
-                <div className="w-full max-w-sm space-y-6">
-                    {/* CAMERA PICKER UI */}
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest ml-1">Hardware Lens</label>
+                <div className="w-full max-w-sm space-y-6 animate-in fade-in duration-500">
+                    <div className="bg-slate-800 p-6 rounded-3xl border border-slate-700">
+                        <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest ml-1 mb-2 block">Available Hardware</label>
                         <div className="relative">
                             <select 
                                 value={selectedCamera} 
                                 onChange={(e) => setSelectedCamera(e.target.value)}
-                                className="w-full bg-gray-800 border-2 border-gray-700 p-4 rounded-2xl appearance-none font-bold outline-none focus:border-indigo-500 transition-all text-sm pr-10"
+                                className="w-full bg-slate-900 border border-slate-700 p-4 rounded-xl appearance-none font-bold text-sm outline-none focus:border-indigo-500"
                             >
-                                {cameras.length === 0 && <option>Initializing hardware...</option>}
+                                {cameras.length === 0 && <option>Waiting for permission...</option>}
                                 {cameras.map(cam => (
                                     <option key={cam.deviceId} value={cam.deviceId}>
                                         {cam.label || `Camera ${cam.deviceId.slice(0, 5)}`}
                                     </option>
                                 ))}
                             </select>
-                            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" size={18} />
+                            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
                         </div>
-                        <button onClick={loadCameras} className="text-[10px] text-indigo-400 flex items-center gap-1 font-bold mt-1 ml-1 active:scale-95"><RefreshCw size={10}/> Reload Camera List</button>
+                        <button onClick={initHardware} className="text-[10px] text-indigo-400 font-bold flex items-center gap-1 mt-2 ml-1 active:scale-95"><RefreshCw size={10}/> Reload Lens List</button>
                     </div>
 
-                    <button onClick={startCamera} className="w-full bg-indigo-600 hover:bg-indigo-500 py-6 rounded-3xl font-black text-xl flex items-center justify-center gap-4 shadow-2xl active:scale-95 shadow-indigo-900/40 transition-all">
-                        <Camera size={32} /> Start Live Scan
+                    <button onClick={startCamera} className="w-full bg-indigo-600 hover:bg-indigo-500 py-6 rounded-3xl font-black text-xl flex items-center justify-center gap-4 shadow-xl active:scale-95 transition-all shadow-indigo-900/40">
+                        <Camera size={32} /> Open Scanner
                     </button>
 
-                    <div className="flex items-center gap-4 py-2 opacity-30">
-                        <div className="h-px bg-gray-500 flex-1"></div>
-                        <span className="text-[10px] font-black uppercase">OR</span>
-                        <div className="h-px bg-gray-500 flex-1"></div>
-                    </div>
-
-                    <div onClick={() => fileInputRef.current.click()} className="bg-gray-800 p-10 rounded-3xl border-2 border-dashed border-gray-700 text-center cursor-pointer hover:border-indigo-500 hover:bg-gray-800/80 transition-all group shadow-2xl">
-                        <ImageIcon size={48} className="mx-auto text-gray-600 group-hover:text-indigo-500 mb-4 transition-colors" />
-                        <p className="font-bold text-gray-400 group-hover:text-gray-200">Upload Screenshot</p>
+                    <div onClick={() => fileInputRef.current.click()} className="bg-slate-800/50 p-10 rounded-3xl border-2 border-dashed border-slate-700 text-center cursor-pointer hover:border-indigo-500 transition-all group">
+                        <ImageIcon size={48} className="mx-auto text-slate-600 group-hover:text-indigo-500 mb-4 transition-colors" />
+                        <p className="font-bold text-slate-400 group-hover:text-slate-200">Upload Image</p>
                     </div>
                     <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" className="hidden" />
                 </div>
             )}
 
-            {/* VERIFICATION CARD VIEW */}
+            {/* RESULTS CARD */}
             {ticketData && (
-                <div className="w-full max-w-md bg-white text-gray-900 rounded-[2.5rem] overflow-hidden shadow-[0_30px_70px_rgba(0,0,0,0.5)] animate-in zoom-in duration-500">
-                    <div className={`${ticketStatus === 'valid' ? 'bg-green-600' : 'bg-orange-500'} p-6 text-white text-center font-black text-xl tracking-wide flex items-center justify-center gap-3 shadow-lg`}>
-                        {ticketStatus === 'valid' ? <CheckCircle size={28} /> : <AlertTriangle size={28} />}
+                <div className="w-full max-w-md bg-white text-slate-900 rounded-[2.5rem] overflow-hidden shadow-2xl animate-in zoom-in">
+                    <div className={`${ticketStatus === 'valid' ? 'bg-green-600' : 'bg-orange-500'} p-6 text-white text-center font-black text-xl flex items-center justify-center gap-2 shadow-lg`}>
+                        {ticketStatus === 'valid' ? <CheckCircle /> : <AlertTriangle />}
                         {ticketStatus === 'valid' ? 'TICKET VERIFIED' : 'TICKET EXPIRED'}
                     </div>
 
                     <div className="p-8 space-y-6">
-                        {/* Passenger Detail Row */}
-                        <div className="flex gap-5 border-b border-gray-100 pb-5">
-                            <div className="bg-indigo-50 p-4 rounded-2xl text-indigo-600"><User size={28} /></div>
+                        <div className="flex gap-4 items-center border-b pb-5">
+                            <div className="bg-indigo-50 p-4 rounded-2xl text-indigo-600"><User size={28}/></div>
                             <div>
-                                <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest mb-1">Passenger Name</p>
-                                <p className="font-bold text-2xl text-gray-800 leading-tight">{ticketData.customerName}</p>
+                                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Passenger</p>
+                                <p className="font-bold text-2xl text-slate-800">{ticketData.customerName}</p>
                             </div>
                         </div>
 
-                        {/* Bus Details Row with BUS NAME */}
-                        <div className="flex gap-5 border-b border-gray-100 pb-5">
-                            <div className="bg-orange-50 p-4 rounded-2xl text-orange-600"><Bus size={28} /></div>
+                        <div className="flex gap-4 items-center border-b pb-5">
+                            <div className="bg-orange-50 p-4 rounded-2xl text-orange-600"><Bus size={28}/></div>
                             <div className="flex-1">
-                                <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest mb-1">Bus Service</p>
-                                <p className="font-bold text-xl text-gray-900 mb-1 leading-tight">
-                                    {ticketData.busId?.name || "KSRTC Super Fast"}
-                                </p>
-                                <div className="text-indigo-600 font-black text-sm flex items-center gap-2">
-                                    <span>{ticketData.busId?.from}</span>
-                                    <span className="text-gray-300 font-normal">→</span>
-                                    <span>{ticketData.busId?.to}</span>
-                                </div>
+                                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Bus Service</p>
+                                <p className="font-bold text-xl text-slate-900 leading-tight">{ticketData.busId?.name || "KSRTC Super Fast"}</p>
+                                <div className="text-indigo-600 font-black text-sm mt-1">{ticketData.busId?.from} → {ticketData.busId?.to}</div>
                             </div>
                         </div>
 
-                        {/* Data Grid Section */}
                         <div className="grid grid-cols-2 gap-4">
-                            <div className="bg-gray-50 p-5 rounded-3xl border border-gray-100">
-                                <div className="flex items-center gap-2 text-gray-400 mb-2">
-                                    <Calendar size={16} /> <span className="text-[10px] font-black uppercase">Travel Date</span>
-                                </div>
-                                <p className="font-black text-gray-900 text-lg">{ticketData.travelDate}</p>
+                            <div className="bg-slate-50 p-5 rounded-3xl border border-slate-100">
+                                <p className="text-[10px] text-slate-400 font-black uppercase mb-1">Date</p>
+                                <p className="font-black text-slate-900 text-lg">{ticketData.travelDate}</p>
                             </div>
-                            <div className="bg-gray-50 p-5 rounded-3xl border border-gray-100">
-                                <div className="flex items-center gap-2 text-gray-400 mb-2">
-                                    <MapPin size={16} /> <span className="text-[10px] font-black uppercase">Seat List</span>
-                                </div>
-                                <p className="font-black text-gray-900 text-lg">{ticketData.seatNumbers?.join(', ')}</p>
+                            <div className="bg-slate-50 p-5 rounded-3xl border border-slate-100">
+                                <p className="text-[10px] text-slate-400 font-black uppercase mb-1">Seats</p>
+                                <p className="font-black text-slate-900 text-lg">{ticketData.seatNumbers?.join(', ')}</p>
                             </div>
                         </div>
 
-                        <div className="pt-4">
-                            <button onClick={() => setTicketData(null)} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-5 rounded-2xl font-black text-lg shadow-xl shadow-indigo-100 transition-all active:scale-95">Verify Next Ticket</button>
+                        <div className="pt-4 space-y-3">
+                            <button onClick={() => downloadTicket(ticketData._id)} disabled={downloading} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-5 rounded-2xl font-black text-lg flex items-center justify-center gap-3 active:scale-95 shadow-xl shadow-indigo-100">
+                                {downloading ? <Loader className="animate-spin" /> : <Download size={22}/>}
+                                {downloading ? 'Processing...' : 'Download Ticket'}
+                            </button>
+                            <button onClick={() => setTicketData(null)} className="w-full bg-slate-100 text-slate-500 py-4 rounded-2xl font-bold hover:bg-slate-200 transition-all">Scan Another</button>
                         </div>
                     </div>
                 </div>
@@ -321,18 +324,18 @@ export default function TicketVerifier() {
 
             {/* ERROR CARD */}
             {error && (
-                <div className="bg-red-500/10 border border-red-500/30 p-10 rounded-[2.5rem] text-center max-w-sm shadow-2xl animate-in zoom-in">
-                    <XCircle size={72} className="mx-auto text-red-500 mb-6" />
-                    <p className="text-red-400 font-bold mb-10 text-lg leading-relaxed">{error}</p>
-                    <button onClick={() => {setError(''); setTicketData(null);}} className="bg-red-600 text-white px-12 py-4 rounded-2xl font-black shadow-lg shadow-red-900/40 active:scale-95 transition-all">Try Again</button>
+                <div className="bg-red-500/10 border border-red-500/20 p-10 rounded-[2.5rem] text-center max-w-sm shadow-2xl animate-in zoom-in">
+                    <XCircle size={72} className="text-red-500 mx-auto mb-6" />
+                    <p className="text-red-400 font-bold mb-10 text-lg">{error}</p>
+                    <button onClick={() => {setError(''); setTicketData(null);}} className="bg-red-600 text-white px-12 py-4 rounded-2xl font-black shadow-lg shadow-red-900/40 active:scale-95">Try Again</button>
                 </div>
             )}
 
-            {/* GLOBAL LOADER */}
+            {/* LOADER */}
             {loading && (
-                <div className="text-center animate-in fade-in duration-300">
+                <div className="text-center py-10">
                     <Loader className="animate-spin text-indigo-500 mx-auto" size={64} />
-                    <p className="mt-6 font-black uppercase text-xs tracking-widest text-gray-500">Querying Database...</p>
+                    <p className="mt-6 font-black uppercase text-xs tracking-widest text-slate-500">Querying Database...</p>
                 </div>
             )}
         </div>
