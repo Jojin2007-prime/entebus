@@ -6,7 +6,6 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
-const { createCanvas } = require('canvas'); //
 
 // --- ✅ IMPORT COMPLAINT ROUTES ---
 const complaintRoutes = require('./routes/complaintRoutes'); 
@@ -17,6 +16,7 @@ const app = express();
 app.use(express.json());
 
 // --- ✅ IMPROVED CORS CONFIGURATION ---
+// Allows all origins for better compatibility with mobile/web clients on different hosting services
 app.use(cors({
   origin: "*", 
   methods: ["GET", "POST", "PUT", "DELETE"],
@@ -153,6 +153,7 @@ app.delete('/api/buses/:id', async (req, res) => {
 
 // 3. Booking & Payment Logic
 
+// Step 1: Initialize local booking
 app.post('/api/bookings/init', async (req, res) => {
   try {
     const { busId, seatNumbers, customerEmail, customerName, customerPhone, amount, date } = req.body;
@@ -176,10 +177,11 @@ app.post('/api/bookings/init', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Step 2: Generate Razorpay Order
 app.post('/api/payment/order', async (req, res) => {
   try {
     const options = { 
-      amount: Math.round(req.body.amount * 100), 
+      amount: Math.round(req.body.amount * 100), // Ensure paise is an integer
       currency: "INR", 
       receipt: "rcp_" + Date.now() 
     };
@@ -187,6 +189,8 @@ app.post('/api/payment/order', async (req, res) => {
     res.json(order);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
+
+// Step 3: Verify Razorpay Signature
 
 app.post('/api/bookings/verify', async (req, res) => {
   const { razorpay_order_id, razorpay_payment_id, razorpay_signature, bookingId } = req.body;
@@ -215,75 +219,75 @@ app.post('/api/bookings/verify', async (req, res) => {
       res.status(400).json({ success: false, message: 'Invalid Signature' });
     }
   } catch (err) { 
+    console.error("❌ Verification Server Error:", err.message);
     res.status(500).json({ error: err.message }); 
   }
 });
 
-// 4. Ticket Verification Route
+// 4. Occupied Seats (Date Specific)
+app.get('/api/bookings/occupied', async (req, res) => {
+  const { busId, date } = req.query;
+  try {
+    const bookings = await Booking.find({ busId, travelDate: date, status: 'Paid' });
+    const occupiedSeats = bookings.flatMap(b => b.seatNumbers);
+    res.json(occupiedSeats);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// 5. Admin Routes
+app.get('/api/admin/manifest', async (req, res) => {
+  const { busId, date } = req.query;
+  try {
+    const query = { busId, status: 'Paid' };
+    if (date) query.travelDate = date;
+
+    const bookings = await Booking.find(query).populate('busId').sort({ travelDate: -1 });
+    res.json(bookings);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/admin/history', async (req, res) => {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+
+    const history = await Booking.aggregate([
+      { $match: { status: 'Paid', travelDate: { $lt: today } }},
+      { $group: {
+          _id: { busId: "$busId", date: "$travelDate" },
+          totalRevenue: { $sum: "$amount" },
+          totalPassengers: { $sum: { $size: "$seatNumbers" } }
+      }},
+      { $lookup: { from: "buses", localField: "_id.busId", foreignField: "_id", as: "busDetails" }},
+      { $unwind: "$busDetails" },
+      { $sort: { "_id.date": -1 } }
+    ]);
+
+    const formattedHistory = history.map(item => ({
+      _id: item._id.busId,
+      date: item._id.date,
+      bus: item.busDetails,
+      revenue: item.totalRevenue,
+      passengers: item.totalPassengers
+    }));
+
+    res.json(formattedHistory);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/admin/bookings', async (req, res) => {
+  try {
+    const bookings = await Booking.find().populate('busId').sort({ _id: -1 });
+    res.json(bookings);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// 6. Ticket & User History
 app.get('/api/verify/:id', async (req, res) => {
   try {
-    const booking = await Booking.findById(req.params.id).populate('busId'); //
+    const booking = await Booking.findById(req.params.id).populate('busId');
     if(!booking) return res.status(404).json({message: "Not Found"});
     res.json(booking);
   } catch (err) { res.status(500).json({ message: 'Invalid Ticket' }); }
-});
-
-// ✅ 5. NEW TICKET IMAGE DOWNLOAD ROUTE
-app.get('/api/tickets/download/:id', async (req, res) => {
-  try {
-    const booking = await Booking.findById(req.params.id).populate('busId'); //
-    if (!booking) return res.status(404).json({ message: "Booking not found" }); //
-
-    const canvas = createCanvas(400, 600); //
-    const ctx = canvas.getContext('2d'); //
-
-    // Background
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, 400, 600);
-
-    // Header Background
-    ctx.fillStyle = '#1e1b4b'; //
-    ctx.fillRect(0, 0, 400, 100); //
-
-    // Header Text
-    ctx.fillStyle = '#ffffff'; //
-    ctx.font = 'bold 24px Arial'; //
-    ctx.fillText('EnteBus Ticket', 110, 60); //
-
-    // Body Styling
-    ctx.fillStyle = '#000000'; //
-    ctx.font = 'bold 16px Arial';
-    
-    // Details
-    ctx.fillText(`Booking ID: ${booking._id}`, 20, 140);
-    ctx.font = '16px Arial'; //
-    ctx.fillText(`Passenger: ${booking.customerName || "N/A"}`, 20, 180); //
-    ctx.fillText(`Bus: ${booking.busId?.name || "N/A"}`, 20, 220); //
-    
-    // Route (Source and Destination)
-    ctx.fillStyle = '#4f46e5';
-    ctx.fillText(`Route: ${booking.busId?.from} to ${booking.busId?.to}`, 20, 260); //
-    
-    ctx.fillStyle = '#000000';
-    ctx.fillText(`Date: ${booking.travelDate}`, 20, 300); //
-    ctx.fillText(`Seats: ${booking.seatNumbers.join(', ')}`, 20, 340); //
-    ctx.fillText(`Amount: Rs. ${booking.amount}`, 20, 380); //
-    ctx.fillText(`Status: ${booking.status}`, 20, 420);
-
-    // Footer
-    ctx.fillStyle = '#6b7280';
-    ctx.font = '12px Arial';
-    ctx.fillText('Please carry a valid ID proof during travel.', 80, 540);
-    ctx.fillText('Thank you for choosing EnteBus!', 110, 560);
-
-    // Send Image as Response
-    res.setHeader('Content-Type', 'image/jpeg'); //
-    const buffer = canvas.toBuffer('image/jpeg'); //
-    res.send(buffer); //
-
-  } catch (err) {
-    res.status(500).json({ error: err.message }); //
-  }
 });
 
 app.get('/api/bookings/user/:email', async (req, res) => {
