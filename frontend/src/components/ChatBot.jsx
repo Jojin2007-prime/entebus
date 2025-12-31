@@ -15,24 +15,24 @@ const EnteBusChatBot = () => {
       path: "save_name"
     },
     
-    // 2. Save Name & Greet (Then auto-move to menu)
+    // 2. Save Name & Greet
     save_name: {
       message: (params) => {
         setUserName(params.userInput);
         return `Pleasure to meet you, ${params.userInput}! 🚀`;
       },
-      transition: { duration: 1000 }, // Wait 1 second before showing menu
-      path: "show_menu" // 🟢 Auto-jump to the menu step
+      transition: { duration: 1000 },
+      path: "show_menu"
     },
 
-    // 3. Show Menu & WAIT for input
+    // 3. Main Menu
     show_menu: {
       message: "How can I help you today?",
       options: ["🎟️ Book Ticket", "🔍 Check PNR", "💰 Fare Calculator", "👮 Support"],
-      path: "process_options" // 🟢 Now it waits here for your click
+      path: "process_options"
     },
 
-    // 4. Process the Click
+    // 4. Router (Process Inputs)
     process_options: {
       transition: { duration: 0 },
       path: (params) => {
@@ -45,7 +45,20 @@ const EnteBusChatBot = () => {
       }
     },
 
-    // --- FEATURE 1: PNR Status ---
+    // --- 🟢 FEATURE 1: Book Ticket (Smart Navigation) ---
+    book_ticket: {
+      message: (params) => {
+        if (window.location.pathname === '/') {
+          return "You are already on the Booking Page! 🏡 Scroll down to search for buses.";
+        }
+        navigate('/'); // Navigate immediately
+        return "Navigating to the Booking Counter... 🚀";
+      },
+      transition: { duration: 2000 }, // Wait 2s for navigation to finish
+      path: "anything_else" // 🔄 LOOP BACK
+    },
+
+    // --- 🟢 FEATURE 2: PNR Status ---
     check_pnr: {
       message: "Please enter your PNR Number (e.g., EB1023).",
       path: (params) => {
@@ -61,14 +74,14 @@ const EnteBusChatBot = () => {
 🆔 PNR: ${params.userInput.toUpperCase()}
 🚌 Bus: Super Fast (KL-15-123)
 ✅ Status: ACTIVE`,
-        path: "anything_else"
+        path: "anything_else" // 🔄 LOOP BACK
     },
     pnr_not_found: {
         message: "🚫 Invalid PNR. Valid numbers start with 'EB'.",
-        path: "show_menu"
+        path: "anything_else" // 🔄 LOOP BACK (Gives chance to try again via menu)
     },
 
-    // --- FEATURE 2: Fare Estimator ---
+    // --- 🟢 FEATURE 3: Fare Estimator ---
     fare_estimator: {
         message: "Select a route:",
         options: ["TVM ➔ KOCHI (₹280)", "KOCHI ➔ KKD (₹210)", "KANNUR ➔ KSD (₹110)"],
@@ -85,7 +98,7 @@ const EnteBusChatBot = () => {
             const seats = parseInt(params.userInput) || 1;
             const total = seats * 280;
             params.injectMessage(`💳 Total: ₹${total} (${seats} seats)`);
-            return "anything_else";
+            return "anything_else"; // 🔄 LOOP BACK
         }
     },
     calc_210: {
@@ -94,7 +107,7 @@ const EnteBusChatBot = () => {
             const seats = parseInt(params.userInput) || 1;
             const total = seats * 210;
             params.injectMessage(`💳 Total: ₹${total} (${seats} seats)`);
-            return "anything_else";
+            return "anything_else"; // 🔄 LOOP BACK
         }
     },
     calc_110: {
@@ -103,11 +116,11 @@ const EnteBusChatBot = () => {
             const seats = parseInt(params.userInput) || 1;
             const total = seats * 110;
             params.injectMessage(`💳 Total: ₹${total} (${seats} seats)`);
-            return "anything_else";
+            return "anything_else"; // 🔄 LOOP BACK
         }
     },
 
-    // --- FEATURE 3: Support ---
+    // --- 🟢 FEATURE 4: Support ---
     live_agent_simulation: {
         message: "Connecting to agent... 🎧",
         transition: { duration: 2000 },
@@ -115,48 +128,32 @@ const EnteBusChatBot = () => {
     },
     agent_busy: {
         message: "⚠️ All agents are busy. Please go to the Support Page.",
-        options: ["Go to Support", "Main Menu"],
+        options: ["Go to Support", "No, Thanks"],
         path: (params) => {
             if (params.userInput === "Go to Support") {
                 navigate('/complaint');
                 return "redirect_message";
             }
-            return "show_menu";
+            return "anything_else"; // 🔄 LOOP BACK
         }
     },
 
-    // --- Utilities & Navigation Fixes ---
-    book_ticket: {
-      message: (params) => {
-        // ✅ Check if already on Home Page
-        if (window.location.pathname === '/') {
-          return "You are already on the Booking Page! 🏡 Scroll down to search for buses.";
-        }
-        return "Taking you to the booking counter... 🚀";
-      },
-      transition: { duration: 1500 }, // Wait 1.5s so user sees the message
-      path: (params) => {
-        if (window.location.pathname !== '/') {
-            navigate('/');
-        }
-        return "end_chat";
-      }
-    },
+    // --- 🔄 THE LOOP LOGIC (ANYTHING ELSE?) ---
     redirect_message: {
         message: "Navigating... 🚀",
-        path: "end_chat"
+        path: "anything_else"
     },
     anything_else: {
-        message: "Anything else?",
+        message: "Is there anything else I can help you with?",
         options: ["Main Menu", "No, thanks"],
         path: (params) => {
-            if (params.userInput === "No, thanks") return "end_chat";
-            return "show_menu";
+            if (params.userInput === "Main Menu") return "show_menu"; // Go back to start
+            return "end_chat"; // End conversation
         }
     },
     end_chat: {
-        message: "Safe travels! 🚌✨",
-        path: "start_again" // Loops back to a silent state
+        message: "Safe travels! 🚌✨ (Chat will reset)",
+        path: "start_again"
     },
     start_again: {
         message: "...",
@@ -168,7 +165,6 @@ const EnteBusChatBot = () => {
     }
   };
 
-  // Keep your existing Bot Options
   const botOptions = {
     theme: {
       primaryColor: '#4f46e5',
