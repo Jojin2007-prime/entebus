@@ -27,25 +27,25 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center p-6 transition-colors duration-300">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#0f172a] flex items-center justify-center p-6 transition-colors duration-300">
       <div className="max-w-md w-full animate-in fade-in duration-700">
         
         {/* Navigation Link */}
-        <Link to="/login-options" className="inline-flex items-center gap-2 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-bold text-xs uppercase tracking-widest mb-6 transition-colors">
+        <Link to="/login-options" className="inline-flex items-center gap-2 text-slate-400 hover:text-indigo-400 font-bold text-xs uppercase tracking-widest mb-6 transition-colors">
           <ArrowLeft size={16} /> Back to Login
         </Link>
 
         {/* --- Main Card --- */}
-        <div className="bg-white dark:bg-slate-800 p-8 rounded-[2.5rem] shadow-2xl w-full border border-transparent dark:border-slate-700 transition-colors">
+        <div className="bg-white dark:bg-[#1e293b] p-8 rounded-[2.5rem] shadow-2xl w-full border border-transparent dark:border-slate-700 transition-colors">
           
           <div className="mb-8 text-center md:text-left">
-            {/* Themed Icon matching your style */}
-            <div className="bg-indigo-100 dark:bg-indigo-900/30 w-14 h-14 rounded-2xl flex items-center justify-center mb-4 mx-auto md:mx-0 shadow-sm">
+            {/* Themed Icon Box */}
+            <div className="bg-indigo-100 dark:bg-indigo-500/20 w-14 h-14 rounded-2xl flex items-center justify-center mb-4 mx-auto md:mx-0 shadow-sm">
                <Bus className="text-indigo-600 dark:text-indigo-400" size={32} />
             </div>
 
-            {/* ✅ FONT STYLE APPLIED: font-black, italic, uppercase, tracking-tighter */}
-            <h2 className="text-3xl font-black text-gray-900 dark:text-white mb-2">
+            {/* Typography: Black, Italic, Uppercase, Tracking-Tighter */}
+            <h2 className="text-4xl font-black italic uppercase tracking-tighter text-gray-900 dark:text-white leading-none">
               Create Account
             </h2>
             <p className="text-gray-500 dark:text-slate-400 font-bold uppercase text-[10px] tracking-[0.2em] mt-3 opacity-70">
@@ -99,21 +99,26 @@ export default function Register() {
                   onChange={e => setPassword(e.target.value)}
                   required
                 />
-                <button type="button" onClick={() => setShowPassword(!showPassword)} className="text-gray-400 hover:text-indigo-600 transition-colors">
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="text-gray-400 hover:text-indigo-400 transition-colors">
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
             </div>
 
-            {/* Submit Button */}
+            {/* Enhanced Register Button */}
             <button 
+              type="submit"
               disabled={loading}
-              className="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 transition shadow-lg shadow-indigo-200"
+              className="relative w-full overflow-hidden bg-indigo-600 text-white py-5 rounded-2xl flex items-center justify-center transition-all hover:bg-indigo-700 active:scale-[0.98] disabled:opacity-70 shadow-xl shadow-indigo-500/20"
             >
-              {loading ? (
-                <div className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin"></div>
-              ) : (
-                <>Register Now <UserPlus size={20}/></>
+              <span className={`flex items-center gap-2 font-black italic uppercase tracking-tighter text-xl ${loading ? 'opacity-0' : 'opacity-100'}`}>
+                Register Now <UserPlus size={22}/>
+              </span>
+              
+              {loading && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin"></div>
+                </div>
               )}
             </button>
           </form>
