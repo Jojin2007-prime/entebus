@@ -9,16 +9,3 @@ html { scroll-behavior: smooth; }
     @apply bg-gray-50 text-gray-900 dark:bg-slate-900 dark:text-gray-100 transition-colors duration-300;
   }
 }
-/* Required for Capacitor Native Scanner */
-body.barcode-scanner-active {
-  background-color: transparent !important;
-}
-
-body.barcode-scanner-active #root {
-  background-color: transparent !important;
-}
-@layer components {
-  .brand-font {
-    @apply font-black italic uppercase tracking-tighter;
-  }
-}
