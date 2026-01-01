@@ -32,7 +32,7 @@ export default function Register() {
         
         {/* Navigation Link */}
         <Link to="/login-options" className="inline-flex items-center gap-2 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-bold text-xs uppercase tracking-widest mb-6 transition-colors">
-          <ArrowLeft size={16} /> Back to Gateway
+          <ArrowLeft size={16} /> Back to Login
         </Link>
 
         {/* --- Main Card --- */}
