@@ -16,7 +16,6 @@ const app = express();
 app.use(express.json());
 
 // --- ✅ IMPROVED CORS CONFIGURATION ---
-// Allows all origins for better compatibility with mobile/web clients on different hosting services
 app.use(cors({
   origin: "*", 
   methods: ["GET", "POST", "PUT", "DELETE"],
@@ -66,7 +65,7 @@ const bookingSchema = new mongoose.Schema({
   paymentId: String,
   orderId: String,
   amount: Number,
-  status: { type: String, default: 'Pending' }
+  status: { type: String, default: 'Pending' } // Statuses: Pending, Paid, Boarded
 });
 const Booking = mongoose.model('Booking', bookingSchema);
 
@@ -153,7 +152,6 @@ app.delete('/api/buses/:id', async (req, res) => {
 
 // 3. Booking & Payment Logic
 
-// Step 1: Initialize local booking
 app.post('/api/bookings/init', async (req, res) => {
   try {
     const { busId, seatNumbers, customerEmail, customerName, customerPhone, amount, date } = req.body;
@@ -161,7 +159,7 @@ app.post('/api/bookings/init', async (req, res) => {
     const existing = await Booking.find({
       busId,
       travelDate: date,
-      status: 'Paid',
+      status: { $in: ['Paid', 'Boarded'] },
       seatNumbers: { $in: seatNumbers }
     });
 
@@ -177,11 +175,10 @@ app.post('/api/bookings/init', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Step 2: Generate Razorpay Order
 app.post('/api/payment/order', async (req, res) => {
   try {
     const options = { 
-      amount: Math.round(req.body.amount * 100), // Ensure paise is an integer
+      amount: Math.round(req.body.amount * 100), 
       currency: "INR", 
       receipt: "rcp_" + Date.now() 
     };
@@ -189,8 +186,6 @@ app.post('/api/payment/order', async (req, res) => {
     res.json(order);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
-
-// Step 3: Verify Razorpay Signature
 
 app.post('/api/bookings/verify', async (req, res) => {
   const { razorpay_order_id, razorpay_payment_id, razorpay_signature, bookingId } = req.body;
@@ -215,12 +210,25 @@ app.post('/api/bookings/verify', async (req, res) => {
       console.log(`✅ Payment Verified for Booking: ${bookingId}`);
       res.json({ success: true, message: 'Success', bookingId: booking._id });
     } else {
-      console.error("❌ Signature Mismatch");
       res.status(400).json({ success: false, message: 'Invalid Signature' });
     }
   } catch (err) { 
-    console.error("❌ Verification Server Error:", err.message);
     res.status(500).json({ error: err.message }); 
+  }
+});
+
+// --- ✅ NEW: BOARDING CONFIRMATION ROUTE ---
+app.put('/api/bookings/board/:id', async (req, res) => {
+  try {
+      const booking = await Booking.findByIdAndUpdate(
+          req.params.id, 
+          { status: 'Boarded' }, 
+          { new: true }
+      );
+      if (!booking) return res.status(404).json({ message: "Booking not found" });
+      res.json({ message: "Passenger Boarded Successfully", booking });
+  } catch (err) {
+      res.status(500).json({ error: err.message });
   }
 });
 
@@ -228,7 +236,7 @@ app.post('/api/bookings/verify', async (req, res) => {
 app.get('/api/bookings/occupied', async (req, res) => {
   const { busId, date } = req.query;
   try {
-    const bookings = await Booking.find({ busId, travelDate: date, status: 'Paid' });
+    const bookings = await Booking.find({ busId, travelDate: date, status: { $in: ['Paid', 'Boarded'] } });
     const occupiedSeats = bookings.flatMap(b => b.seatNumbers);
     res.json(occupiedSeats);
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -238,7 +246,7 @@ app.get('/api/bookings/occupied', async (req, res) => {
 app.get('/api/admin/manifest', async (req, res) => {
   const { busId, date } = req.query;
   try {
-    const query = { busId, status: 'Paid' };
+    const query = { busId, status: { $in: ['Paid', 'Boarded'] } };
     if (date) query.travelDate = date;
 
     const bookings = await Booking.find(query).populate('busId').sort({ travelDate: -1 });
@@ -251,7 +259,7 @@ app.get('/api/admin/history', async (req, res) => {
     const today = new Date().toISOString().split('T')[0];
 
     const history = await Booking.aggregate([
-      { $match: { status: 'Paid', travelDate: { $lt: today } }},
+      { $match: { status: { $in: ['Paid', 'Boarded'] }, travelDate: { $lt: today } }},
       { $group: {
           _id: { busId: "$busId", date: "$travelDate" },
           totalRevenue: { $sum: "$amount" },

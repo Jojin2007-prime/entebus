@@ -6,7 +6,6 @@ import {
   Sun, Moon, MessageSquareWarning 
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
-// ✅ Import your custom logo
 import BusLogo from './BusLogo'; 
 
 export default function Navbar() {
@@ -48,21 +47,17 @@ export default function Navbar() {
           
           {/* --- LOGO SECTION --- */}
           <Link to="/" className="text-2xl font-black text-gray-900 dark:text-white flex items-center gap-2 tracking-tight">
-            {/* Custom BusLogo scaled slightly for mobile */}
             <div className="p-1 scale-90 md:scale-100">
                <BusLogo />
             </div>
-
             <span className="text-indigo-600 dark:text-indigo-400">
                 Ente<span className="text-yellow-400">Bus</span>
             </span>
           </Link>
 
-          {/* --- DESKTOP NAVIGATION (Hidden on Mobile) --- */}
-          {/* We hide this on mobile because the BottomNav handles these actions */}
+          {/* --- DESKTOP NAVIGATION --- */}
           <div className="hidden md:flex flex-wrap justify-center gap-2">
             <NavItem to="/" icon={Home} label="Home" />
-            
             {user && <NavItem to="/search" icon={Search} label="Search" />}
             <NavItem to="/schedule" icon={Calendar} label="Schedule" />
             <NavItem to="/prices" icon={IndianRupee} label="Prices" />
@@ -81,7 +76,7 @@ export default function Navbar() {
 
           {/* --- ACTIONS SECTION --- */}
           <div className="flex items-center gap-2">
-            {/* Theme Toggle (Visible on both Mobile & Desktop) */}
+            {/* Theme Toggle */}
             <button 
               onClick={toggleTheme} 
               className="p-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 transition-all mr-1"
@@ -89,7 +84,7 @@ export default function Navbar() {
               {theme === 'dark' ? <Sun size={20} className="text-yellow-400"/> : <Moon size={20}/>}
             </button>
 
-            {/* Desktop-Only Actions */}
+            {/* Desktop Actions */}
             <div className="hidden md:flex items-center gap-3">
               {user && !admin && (
                 <Link to="/verify" className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm border transition-all mr-2 ${location.pathname === '/verify' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-indigo-50 dark:bg-gray-800 text-indigo-700 dark:text-indigo-400 border-indigo-100 dark:border-gray-700 hover:bg-indigo-100 dark:hover:bg-gray-700'}`}>
@@ -122,14 +117,19 @@ export default function Navbar() {
                   </button>
                 </div>
               ) : (
-                <div className="flex items-center bg-gray-100 dark:bg-gray-800 p-1 rounded-xl">
-                  <Link to="/admin-login" className="px-4 py-2 rounded-lg text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition">Admin</Link>
-                  <Link to="/login" className="flex items-center gap-1 px-5 py-2 bg-white dark:bg-gray-700 rounded-lg text-sm font-bold text-gray-900 dark:text-white shadow-sm hover:shadow-md transition">Login <ChevronRight size={14} className="text-indigo-600 dark:text-indigo-400"/></Link>
+                <div className="flex items-center gap-2">
+                  {/* ✅ UPDATED: Single Login Action for Gateway */}
+                  <Link 
+                    to="/login-options" 
+                    className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-black uppercase tracking-tighter shadow-lg shadow-indigo-200 dark:shadow-none hover:bg-indigo-700 transition-all active:scale-95"
+                  >
+                    Login / Join <ChevronRight size={16}/>
+                  </Link>
                 </div>
               )}
             </div>
 
-            {/* Mobile Logout Button (Visible only on phones when logged in) */}
+            {/* Mobile Action */}
             <div className="md:hidden flex items-center gap-2">
               {(user || admin) ? (
                 <button 
@@ -139,7 +139,7 @@ export default function Navbar() {
                   <LogOut size={20} />
                 </button>
               ) : (
-                <Link to="/login" className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-xs font-bold active:scale-95 transition-transform">
+                <Link to="/login-options" className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-xs font-bold active:scale-95 transition-transform">
                   Login
                 </Link>
               )}

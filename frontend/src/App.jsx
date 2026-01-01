@@ -31,6 +31,9 @@ import Payment from './pages/Payment';
 import Complaint from './pages/Complaint';
 import AdminComplaints from './pages/AdminComplaints';
 
+// ✅ New Import
+import LoginOptions from './pages/LoginOptions';
+
 export default function App() {
   return (
     <ThemeProvider>
@@ -47,6 +50,10 @@ export default function App() {
             <Route path="/search" element={<SearchBuses />} />
             <Route path="/buses" element={<BusResults />} />
             <Route path="/seats/:busId" element={<SeatSelection />} />
+            
+            {/* ✅ Registered Route */}
+            <Route path="/login-options" element={<LoginOptions />} />
+            
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/about" element={<AboutUs />} />
@@ -64,8 +71,6 @@ export default function App() {
             <Route path="/admin/history" element={<AdminTripHistory />} />
             <Route path="/admin/complaints" element={<AdminComplaints />} />
           </Routes>
-
-          {/* ChatBot section is now empty and removed successfully */}
 
           <BottomNav />
 
