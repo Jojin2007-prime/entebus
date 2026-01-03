@@ -5,42 +5,42 @@ EnteBus is a professional Full-Stack (MERN) web application designed to moderniz
 🚀 Features
 
    Passenger Module
-.Real-time Bus Search: Filter buses by departure location, destination, and timing.
+*Real-time Bus Search: Filter buses by departure location, destination, and timing.
 
-.Live Seat Selection: Interactive UI for selecting specific seats on the bus.
+*Live Seat Selection: Interactive UI for selecting specific seats on the bus.
 
-.Secure Payments: Integrated Razorpay for safe digital transactions.
+*Secure Payments: Integrated Razorpay for safe digital transactions.
 
-.Multi-Language Support: Instant translation between English, Malayalam, and Hindi via Google Translate API.
+*Multi-Language Support: Instant translation between English, Malayalam, and Hindi via Google Translate API.
 
-.Ticket History: Personal dashboard to view and manage past bookings.
+*Ticket History: Personal dashboard to view and manage past bookings.
 
-.QR Ticket Scanning: Digital ticket verification system for smooth boarding.
+*QR Ticket Scanning: Digital ticket verification system for smooth boarding.
 
 
   Admin Module
-.Fleet Management: Add, update, or remove buses and schedules.
+*Fleet Management: Add, update, or remove buses and schedules.
 
-.Role-Based Access Control: Secure routes ensure only authorized admins can see driver details and manifests.
+*Role-Based Access Control: Secure routes ensure only authorized admins can see driver details and manifests.
 
-.Analytics Dashboard: Overview of total bookings and revenue.
+*Analytics Dashboard: Overview of total bookings and revenue.
 
 
 
 
 
   🛠 Tech Stack
-.Frontend: React.js + Vite
+*Frontend: React.js + Vite
 
-.Styling: Tailwind CSS + Framer Motion (for animations)
+*Styling: Tailwind CSS + Framer Motion (for animations)
 
-.Backend: Node.js + Express.js
+*Backend: Node.js + Express.js
 
-.Database: MongoDB + Mongoose
+*Database: MongoDB + Mongoose
 
-.Payments: Razorpay API
+*Payments: Razorpay API
 
-.Icons: Lucide React
+*Icons: Lucide React
 
 
 
