@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Clock, Calendar, CheckCircle, RefreshCw, 
   MapPin, AlertTriangle, CreditCard, Download, 
-  Ticket, ChevronRight 
+  Ticket, ChevronRight, AlertCircle 
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import QRCode from 'qrcode';
@@ -13,7 +13,13 @@ export default function PaymentHistory() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [downloadingId, setDownloadingId] = useState(null); // Track specific download status
+  const [downloadingId, setDownloadingId] = useState(null);
+
+  // Helper: Date comparison logic
+  const isExpired = (travelDate) => {
+    const today = new Date().toISOString().split('T')[0];
+    return travelDate < today;
+  };
 
   const fetchBookings = async () => {
     const user = JSON.parse(localStorage.getItem('user'));
@@ -81,51 +87,42 @@ export default function PaymentHistory() {
     }
   };
 
-  // --- IMPROVED PDF GENERATION ---
   const handleDownload = async (booking) => {
     setDownloadingId(booking._id);
     const doc = new jsPDF();
     const verifierUrl = `https://entebus.vercel.app/verify/${booking._id}`; 
     
     try {
-      // Wait for QR code generation
       const qrCodeDataUri = await QRCode.toDataURL(verifierUrl, {
         margin: 1,
         width: 200,
         color: { dark: '#1e1b4b', light: '#ffffff' }
       });
 
-      // Header Branding
       doc.setFillColor(79, 70, 229); 
       doc.rect(0, 0, 210, 45, 'F');
-      
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(26);
       doc.setFont("helvetica", "bold");
       doc.text("ENTE BUS", 20, 28);
-      
       doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
       doc.text("OFFICIAL E-TICKET", 20, 36);
 
-      // Ticket Reference Info
       doc.setTextColor(40, 40, 40);
       doc.setFontSize(9);
       doc.text(`BOOKING ID: ${booking._id.toUpperCase()}`, 20, 55);
       doc.text(`ISSUED ON: ${new Date().toLocaleString()}`, 130, 55);
 
-      // Main Ticket Container
       doc.setDrawColor(220, 220, 220);
       doc.setLineWidth(0.5);
       doc.roundedRect(20, 65, 170, 95, 3, 3);
 
-      // Journey Header
       doc.setFontSize(16);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(79, 70, 229);
       doc.text(booking.busId?.name || "Bus Details", 30, 80);
       
-      // Details Grid
       doc.setTextColor(80, 80, 80);
       doc.setFontSize(11);
       doc.setFont("helvetica", "bold");
@@ -144,16 +141,14 @@ export default function PaymentHistory() {
       doc.setFont("helvetica", "normal");
       doc.text(booking.travelDate || "N/A", 70, 115);
       doc.text(formatTime(booking.busId?.departureTime), 70, 125);
-      doc.setTextColor(16, 185, 129); // Green for seats
+      doc.setTextColor(16, 185, 129);
       doc.text(booking.seatNumbers.join(", "), 70, 135);
 
-      // QR Code Placement
       doc.addImage(qrCodeDataUri, 'PNG', 135, 80, 45, 45);
       doc.setFontSize(8);
       doc.setTextColor(150, 150, 150);
       doc.text("SCAN TO VERIFY", 145, 130);
 
-      // Bottom Bar
       doc.setFillColor(249, 250, 251);
       doc.rect(21, 140, 168, 19, 'F');
       doc.setTextColor(40, 40, 40);
@@ -161,7 +156,6 @@ export default function PaymentHistory() {
       doc.text(`PASSENGER: ${booking.customerName.toUpperCase()}`, 30, 152);
       doc.text(`TOTAL PAID: RS. ${booking.amount}`, 130, 152);
 
-      // Footer
       doc.setFontSize(8);
       doc.setTextColor(180, 180, 180);
       doc.text("Model Polytechnic College Mattakkara - Project 2025", 105, 180, { align: 'center' });
@@ -200,7 +194,7 @@ export default function PaymentHistory() {
             ))}
           </div>
         ) : bookings.length === 0 ? (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-20 bg-white dark:bg-gray-800 rounded-[2.5rem] shadow-xl shadow-gray-200/50 dark:shadow-none border border-gray-100 dark:border-gray-700">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-20 bg-white dark:bg-gray-800 rounded-[2.5rem] shadow-xl border border-gray-100 dark:border-gray-700">
             <div className="w-20 h-20 bg-indigo-50 dark:bg-indigo-900/20 rounded-full flex items-center justify-center mx-auto mb-6 text-indigo-500">
               <CreditCard size={40} />
             </div>
@@ -211,7 +205,8 @@ export default function PaymentHistory() {
           <div className="space-y-6">
             <AnimatePresence mode="popLayout">
               {bookings.map((booking) => {
-                const isPaid = booking.status === 'Paid';
+                const isPaid = booking.status === 'Paid' || booking.status === 'Boarded';
+                const expired = booking.status === 'Pending' && isExpired(booking.travelDate); //
                 const isDownloading = downloadingId === booking._id;
 
                 return (
@@ -223,13 +218,21 @@ export default function PaymentHistory() {
                     className={`group relative overflow-hidden p-6 rounded-[2rem] border transition-all duration-300
                       ${isPaid 
                         ? 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-xl hover:border-indigo-200 dark:hover:border-indigo-900' 
-                        : 'bg-amber-50/50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-900/30'}`}
+                        : expired 
+                          ? 'bg-red-50/50 dark:bg-red-900/10 border-red-100 dark:border-red-900/30' 
+                          : 'bg-amber-50/50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-900/30'}`}
                   >
                     <div className="flex flex-col md:flex-row justify-between gap-6 relative z-10">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-4">
-                          <span className={`px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase ${isPaid ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300' : 'bg-amber-100 text-amber-700'}`}>
-                            {booking.busId?.type || 'Standard'}
+                          <span className={`px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase ${
+                            isPaid 
+                              ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300' 
+                              : expired 
+                                ? 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300' 
+                                : 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300'
+                          }`}>
+                            {expired ? 'EXPIRED' : booking.status}
                           </span>
                           <span className="text-xs text-gray-400 font-mono">#{booking._id.slice(-6).toUpperCase()}</span>
                         </div>
@@ -244,7 +247,7 @@ export default function PaymentHistory() {
                             <span className="font-bold">{booking.busId?.from} <ChevronRight size={14} className="inline mx-1"/> {booking.busId?.to}</span>
                           </div>
                           <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-700/50 px-3 py-2 rounded-xl text-gray-700 dark:text-gray-300">
-                            <Calendar size={16} className="text-rose-500" />
+                            <Calendar size={16} className={expired ? "text-red-500" : "text-rose-500"} />
                             <span className="font-bold">{booking.travelDate}</span>
                           </div>
                           <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-700/50 px-3 py-2 rounded-xl text-gray-700 dark:text-gray-300">
@@ -271,14 +274,14 @@ export default function PaymentHistory() {
                                 disabled={isDownloading}
                                 className={`flex items-center gap-2 text-indigo-600 dark:text-indigo-400 text-xs font-bold hover:underline ${isDownloading ? 'opacity-50' : ''}`}
                               >
-                                {isDownloading ? (
-                                  <RefreshCw size={14} className="animate-spin" />
-                                ) : (
-                                  <Download size={14} />
-                                )}
+                                {isDownloading ? <RefreshCw size={14} className="animate-spin" /> : <Download size={14} />}
                                 {isDownloading ? 'Preparing...' : 'Ticket PDF'}
                               </button>
                             </>
+                          ) : expired ? (
+                            <div className="bg-red-500 text-white px-4 py-1.5 rounded-full text-[10px] font-black flex items-center gap-1.5 shadow-lg shadow-red-200 dark:shadow-none">
+                              <AlertCircle size={14} /> DATE EXPIRED
+                            </div>
                           ) : (
                             <>
                               <div className="bg-amber-500 text-white px-4 py-1.5 rounded-full text-[10px] font-black flex items-center gap-1.5">
@@ -295,7 +298,6 @@ export default function PaymentHistory() {
                         </div>
                       </div>
                     </div>
-                    <div className="absolute top-0 right-0 -mr-4 -mt-4 w-24 h-24 bg-indigo-500/5 dark:bg-indigo-500/10 rounded-full blur-3xl group-hover:bg-indigo-500/10 transition-colors" />
                   </motion.div>
                 );
               })}
