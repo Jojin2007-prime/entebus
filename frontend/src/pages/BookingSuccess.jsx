@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import { CheckCircle, Download, Home, Printer, Bus, Calendar, MapPin, User, Loader, Clock } from 'lucide-react';
 
 export default function BookingSuccess() {
-  const { id } = useParams(); // ✅ FIX: Get ID from URL (matches your screenshot)
+  const { id } = useParams(); 
   const navigate = useNavigate();
   const [booking, setBooking] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -33,47 +33,72 @@ export default function BookingSuccess() {
       });
   }, [id]);
 
-  // --- 🆕 PDF DOWNLOAD FUNCTION ---
-  const downloadTicket = () => {
+  // --- 🆕 UPDATED PDF DOWNLOAD FUNCTION ---
+  const downloadTicket = async () => {
     if (!booking) return;
     const doc = new jsPDF();
 
-    // Blue Header
-    doc.setFillColor(37, 99, 235);
-    doc.rect(0, 0, 220, 40, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(22);
-    doc.text("EnteBus Ticket", 105, 25, null, null, "center");
+    // 1. FETCH QR CODE AS BASE64
+    const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=TicketID:${id}`;
+    
+    try {
+      const response = await fetch(qrImageUrl);
+      const blob = await response.blob();
+      const reader = new FileReader();
+      
+      reader.readAsDataURL(blob);
+      reader.onloadend = () => {
+        const base64data = reader.result;
 
-    // Bus & Route
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(14);
-    doc.text(booking.busId?.name || "Bus Service", 20, 60);
-    doc.setFontSize(10);
-    doc.text(`${booking.busId?.from} -> ${booking.busId?.to}`, 20, 68);
-    doc.text(`Date: ${booking.travelDate}`, 20, 76);
+        // --- DRAW PDF CONTENT ---
+        // Blue Header
+        doc.setFillColor(37, 99, 235);
+        doc.rect(0, 0, 220, 40, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(22);
+        doc.text("EnteBus Ticket", 105, 25, null, null, "center");
 
-    // Passenger
-    doc.line(20, 85, 190, 85);
-    doc.text(`Passenger: ${booking.customerName}`, 20, 95);
-    doc.text(`Mobile: ${booking.customerPhone}`, 120, 95);
-    doc.text(`Email: ${booking.customerEmail}`, 20, 102);
+        // Bus & Route
+        doc.setTextColor(0, 0, 0);
+        doc.setFontSize(14);
+        doc.text(booking.busId?.name || "Bus Service", 20, 60);
+        doc.setFontSize(10);
+        doc.text(`${booking.busId?.from} -> ${booking.busId?.to}`, 20, 68);
+        doc.text(`Date: ${booking.travelDate}`, 20, 76);
 
-    // Seats & ID
-    doc.setFillColor(240, 240, 240);
-    doc.rect(20, 115, 170, 25, 'F');
-    doc.setFontSize(14);
-    doc.setTextColor(37, 99, 235);
-    doc.text(`Seat(s): ${booking.seatNumbers.join(", ")}`, 30, 132);
-    doc.setTextColor(0, 128, 0);
-    doc.text(`Paid: Rs. ${booking.amount}`, 120, 132);
+        // 2. ADD THE QR CODE IMAGE TO PDF
+        doc.addImage(base64data, 'PNG', 150, 45, 40, 40);
+        doc.setFontSize(8);
+        doc.text("SCAN TO VERIFY", 170, 88, null, null, "center");
 
-    // Footer
-    doc.setTextColor(150, 150, 150);
-    doc.setFontSize(10);
-    doc.text(`Booking ID: ${booking._id}`, 105, 280, null, null, "center");
+        // Passenger details
+        doc.line(20, 95, 190, 95);
+        doc.setFontSize(10);
+        doc.text(`Passenger: ${booking.customerName}`, 20, 105);
+        doc.text(`Mobile: ${booking.customerPhone}`, 120, 105);
+        doc.text(`Email: ${booking.customerEmail}`, 20, 112);
 
-    doc.save(`Ticket-${booking._id.slice(-6)}.pdf`);
+        // Seats & ID Box
+        doc.setFillColor(240, 240, 240);
+        doc.rect(20, 125, 170, 25, 'F');
+        doc.setFontSize(14);
+        doc.setTextColor(37, 99, 235);
+        doc.text(`Seat(s): ${booking.seatNumbers.join(", ")}`, 30, 142);
+        doc.setTextColor(0, 128, 0);
+        doc.text(`Paid: Rs. ${booking.amount}`, 120, 142);
+
+        // Footer
+        doc.setTextColor(150, 150, 150);
+        doc.setFontSize(10);
+        doc.text(`Booking ID: ${booking._id}`, 105, 280, null, null, "center");
+
+        doc.save(`Ticket-${booking._id.slice(-6)}.pdf`);
+      };
+    } catch (error) {
+      console.error("Error generating PDF with QR:", error);
+      // Fallback: download without QR if fetch fails
+      doc.save(`Ticket-${booking._id.slice(-6)}.pdf`);
+    }
   };
 
   if (loading) return (
