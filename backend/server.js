@@ -65,7 +65,7 @@ const bookingSchema = new mongoose.Schema({
   paymentId: String,
   orderId: String,
   amount: Number,
-  status: { type: String, default: 'Pending' } // Statuses: Pending, Paid, Boarded
+  status: { type: String, default: 'Pending' } // Statuses: Pending, Paid, Boarded, Expired
 });
 const Booking = mongoose.model('Booking', bookingSchema);
 
@@ -76,12 +76,11 @@ app.use('/api/complaints', complaintRoutes);
 // 1. Auth Routes
 app.post('/api/auth/register', async (req, res) => {
   try {
-    // Enforce 8-character password check
     if (req.body.password.length < 8) {
       return res.status(400).json({ message: 'Password must be at least 8 characters long' });
     }
 
-    const emailLower = req.body.email.toLowerCase(); // Ensure lowercase email
+    const emailLower = req.body.email.toLowerCase();
     const userExists = await User.findOne({ email: emailLower });
     if (userExists) return res.status(400).json({ message: 'Email already exists' });
     
@@ -100,7 +99,7 @@ app.post('/api/auth/register', async (req, res) => {
 
 app.post('/api/auth/login', async (req, res) => {
   try {
-    const user = await User.findOne({ email: req.body.email.toLowerCase() }); // Case-insensitive login
+    const user = await User.findOne({ email: req.body.email.toLowerCase() });
     if (!user) return res.status(400).json({ message: 'Email not found' });
     
     const validPass = await bcrypt.compare(req.body.password, user.password);
@@ -111,30 +110,34 @@ app.post('/api/auth/login', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// --- ✅ NEW: PASSWORD RESET ROUTE ---
+// --- ✅ UPDATED: PASSWORD RESET ROUTE ---
 app.post('/api/auth/reset-password', async (req, res) => {
   try {
     const { email, newPassword } = req.body;
 
+    if (!email || !newPassword) {
+      return res.status(400).json({ message: 'Email and new password are required' });
+    }
+
     // Find user using case-insensitive email
     const user = await User.findOne({ email: email.toLowerCase() });
-    if (!user) return res.status(404).json({ message: 'No account found with this email' });
+    
+    // This provides the "Email is entered but not found" logic
+    if (!user) {
+      return res.status(404).json({ message: 'No account exists with this email address' });
+    }
 
-    // Validate password length
     if (newPassword.length < 8) {
       return res.status(400).json({ message: 'New password must be at least 8 characters' });
     }
 
-    // Hash the new password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(newPassword, salt);
 
-    // Update user in MongoDB
     user.password = hashedPassword;
     await user.save();
 
-    console.log(`🔄 Password Reset Successful for: ${email}`);
-    res.json({ message: 'Password updated successfully!' });
+    res.json({ message: 'Success! Your password has been updated.' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -241,6 +244,14 @@ app.post('/api/bookings/verify', async (req, res) => {
       const booking = await Booking.findById(bookingId);
       if (!booking) return res.status(404).json({ message: "Booking not found" });
 
+      // Final check for expiry before confirming payment
+      const today = new Date().toISOString().split('T')[0];
+      if (booking.travelDate < today) {
+        booking.status = 'Expired';
+        await booking.save();
+        return res.status(400).json({ success: false, message: 'Ticket expired. Date passed.' });
+      }
+
       booking.paymentId = razorpay_payment_id;
       booking.orderId = razorpay_order_id;
       booking.status = 'Paid';
@@ -256,7 +267,6 @@ app.post('/api/bookings/verify', async (req, res) => {
   }
 });
 
-// --- ✅ NEW: BOARDING CONFIRMATION ROUTE ---
 app.put('/api/bookings/board/:id', async (req, res) => {
   try {
       const booking = await Booking.findByIdAndUpdate(
@@ -339,10 +349,22 @@ app.get('/api/verify/:id', async (req, res) => {
 
 app.get('/api/bookings/user/:email', async (req, res) => {
   try {
+    const today = new Date().toISOString().split('T')[0];
     const bookings = await Booking.find({ customerEmail: req.params.email }).populate('busId').sort({_id:-1});
-    res.json(bookings);
+    
+    // Dynamically mark pending past bookings as expired for the history view
+    const updatedBookings = bookings.map(b => {
+      const obj = b.toObject();
+      if (obj.status === 'Pending' && obj.travelDate < today) {
+        obj.status = 'Expired';
+      }
+      return obj;
+    });
+
+    res.json(updatedBookings);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Handle Port 10000 for Render
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
