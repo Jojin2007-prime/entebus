@@ -1,15 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react'; // Added useEffect
 import axios from 'axios';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom'; // Added useLocation
 import { toast } from 'react-toastify';
 import { Mail, Lock, Eye, EyeOff, ArrowLeft, KeyRound } from 'lucide-react';
 
 export default function ResetPassword() {
+  const { state } = useLocation(); // Catch the state (email) passed from Login.jsx
   const [email, setEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  // --- ✅ NEW LOGIC: Auto-fill email if passed from Login page ---
+  useEffect(() => {
+    if (state?.email) {
+      setEmail(state.email);
+    }
+  }, [state]);
 
   const handleReset = async (e) => {
     e.preventDefault();
@@ -35,6 +43,9 @@ export default function ResetPassword() {
       });
 
       toast.success(response.data.message || 'Password updated successfully!');
+      
+      // --- ✅ LOGIC: Save email for auto-fill on Login page after redirect ---
+      localStorage.setItem('resetEmail', email.toLowerCase().trim());
       
       // Delay redirect so user can see the success message
       setTimeout(() => {
