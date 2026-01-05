@@ -14,6 +14,14 @@ export default function Register() {
 
   const handleRegister = async (e) => {
     e.preventDefault();
+
+    // --- Added Password Length Validation ---
+    if (password.length < 8) {
+      toast.error('Password must be at least 8 characters long!'); //
+      return;
+    }
+    // ----------------------------------------
+
     setLoading(true);
     try {
       await axios.post(
