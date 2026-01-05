@@ -76,13 +76,23 @@ app.use('/api/complaints', complaintRoutes);
 // 1. Auth Routes
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const userExists = await User.findOne({ email: req.body.email });
+    // Enforce 8-character password check
+    if (req.body.password.length < 8) {
+      return res.status(400).json({ message: 'Password must be at least 8 characters long' });
+    }
+
+    const emailLower = req.body.email.toLowerCase(); // Ensure lowercase email
+    const userExists = await User.findOne({ email: emailLower });
     if (userExists) return res.status(400).json({ message: 'Email already exists' });
     
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(req.body.password, salt);
     
-    const user = new User({ ...req.body, password: hashedPassword });
+    const user = new User({ 
+      ...req.body, 
+      email: emailLower, 
+      password: hashedPassword 
+    });
     await user.save();
     res.json({ message: 'User Registered Successfully!' });
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -90,7 +100,7 @@ app.post('/api/auth/register', async (req, res) => {
 
 app.post('/api/auth/login', async (req, res) => {
   try {
-    const user = await User.findOne({ email: req.body.email });
+    const user = await User.findOne({ email: req.body.email.toLowerCase() }); // Case-insensitive login
     if (!user) return res.status(400).json({ message: 'Email not found' });
     
     const validPass = await bcrypt.compare(req.body.password, user.password);
@@ -99,6 +109,35 @@ app.post('/api/auth/login', async (req, res) => {
     const token = jwt.sign({ _id: user._id, email: user.email }, 'SECRET_KEY');
     res.json({ token, user: { name: user.name, email: user.email } });
   } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// --- ✅ NEW: PASSWORD RESET ROUTE ---
+app.post('/api/auth/reset-password', async (req, res) => {
+  try {
+    const { email, newPassword } = req.body;
+
+    // Find user using case-insensitive email
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!user) return res.status(404).json({ message: 'No account found with this email' });
+
+    // Validate password length
+    if (newPassword.length < 8) {
+      return res.status(400).json({ message: 'New password must be at least 8 characters' });
+    }
+
+    // Hash the new password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    // Update user in MongoDB
+    user.password = hashedPassword;
+    await user.save();
+
+    console.log(`🔄 Password Reset Successful for: ${email}`);
+    res.json({ message: 'Password updated successfully!' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.post('/api/admin/login', (req, res) => {
