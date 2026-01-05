@@ -11,8 +11,6 @@ EnteBus is a professional Full-Stack (MERN) web application designed to moderniz
 
 *Secure Payments: Integrated Razorpay for safe digital transactions.
 
-*Multi-Language Support: Instant translation between English, Malayalam, and Hindi via Google Translate API.
-
 *Ticket History: Personal dashboard to view and manage past bookings.
 
 *QR Ticket Scanning: Digital ticket verification system for smooth boarding.
