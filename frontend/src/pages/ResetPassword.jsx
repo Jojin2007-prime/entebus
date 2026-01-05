@@ -14,33 +14,38 @@ export default function ResetPassword() {
   const handleReset = async (e) => {
     e.preventDefault();
 
-    // 1. Frontend validation for 8-character length
+    // --- Validation Checks ---
+    if (!email.trim()) {
+      toast.error('Please enter your registered email address.');
+      return;
+    }
+
     if (newPassword.length < 8) {
       toast.error('New password must be at least 8 characters long!');
       return;
     }
+    // -------------------------
 
     setLoading(true);
     try {
-      // 2. Sending request to the backend
-      // Ensure the email is sent in lowercase to match our backend fix
+      // Sending lowercase email to ensure consistency with backend fix
       const response = await axios.post('https://entebus-api.onrender.com/api/auth/reset-password', { 
-        email: email.toLowerCase(), 
+        email: email.toLowerCase().trim(), 
         newPassword 
       });
 
-      toast.success(response.data.message || 'Password updated successfully!'); //
+      toast.success(response.data.message || 'Password updated successfully!');
       
-      // Small delay before redirecting to allow the user to read the toast
+      // Delay redirect so user can see the success message
       setTimeout(() => {
         navigate('/login');
       }, 2000);
 
     } catch (err) {
-      // 3. Extracting the exact error message from the backend
-      const errorMessage = err.response?.data?.message || 'Failed to reset password. Check the email.';
+      // Pull specific error message (e.g., "No account found") from server.js
+      const errorMessage = err.response?.data?.message || 'Failed to reset password. Please check the email.';
       toast.error(errorMessage);
-      console.error('Reset Error:', err.response?.data); //
+      console.error('Reset Error Details:', err.response?.data);
     } finally {
       setLoading(false);
     }
@@ -48,7 +53,7 @@ export default function ResetPassword() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center p-6 transition-colors duration-300">
-      <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-xl w-full max-w-md transition-colors border border-transparent dark:border-slate-700">
+      <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-xl w-full max-w-md border border-transparent dark:border-slate-700 transition-colors">
         
         {/* Navigation Back */}
         <Link
@@ -58,22 +63,24 @@ export default function ResetPassword() {
           <ArrowLeft size={16} /> Back to Login
         </Link>
 
-        {/* Visual Icon */}
+        {/* Visual Header */}
         <div className="bg-orange-100 dark:bg-orange-500/20 w-12 h-12 rounded-2xl flex items-center justify-center mb-6">
           <KeyRound className="text-orange-600 dark:text-orange-400" size={28} />
         </div>
 
         <h2 className="text-3xl font-black text-gray-900 dark:text-white mb-2">Reset Password</h2>
-        <p className="text-gray-500 dark:text-slate-400 mb-8">Enter your registered email and a new password.</p>
+        <p className="text-gray-500 dark:text-slate-400 mb-8 font-medium">
+          Enter your registered email to update your credentials.
+        </p>
 
         <form onSubmit={handleReset} className="space-y-4">
           {/* Email Input */}
-          <div className="bg-gray-50 dark:bg-slate-900 p-3 rounded-xl border border-gray-200 dark:border-slate-700 flex items-center gap-3">
+          <div className="bg-gray-50 dark:bg-slate-900 p-3 rounded-xl border border-gray-200 dark:border-slate-700 flex items-center gap-3 focus-within:border-indigo-500 transition-colors">
             <div className="text-gray-400 dark:text-slate-500"><Mail size={20} /></div>
             <input 
               type="email" 
-              placeholder="Email Address" 
-              className="bg-transparent w-full outline-none font-medium text-gray-900 dark:text-white"
+              placeholder="Registered Email" 
+              className="bg-transparent w-full outline-none font-medium text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500"
               value={email}
               onChange={e => setEmail(e.target.value)}
               required
@@ -81,17 +88,21 @@ export default function ResetPassword() {
           </div>
 
           {/* New Password Input */}
-          <div className="bg-gray-50 dark:bg-slate-900 p-3 rounded-xl border border-gray-200 dark:border-slate-700 flex items-center gap-3">
+          <div className="bg-gray-50 dark:bg-slate-900 p-3 rounded-xl border border-gray-200 dark:border-slate-700 flex items-center gap-3 focus-within:border-indigo-500 transition-colors">
             <div className="text-gray-400 dark:text-slate-500"><Lock size={20} /></div>
             <input 
               type={showPassword ? "text" : "password"}
               placeholder="New Password (min 8 chars)" 
-              className="bg-transparent w-full outline-none font-medium text-gray-900 dark:text-white"
+              className="bg-transparent w-full outline-none font-medium text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500"
               value={newPassword}
               onChange={e => setNewPassword(e.target.value)}
               required
             />
-            <button type="button" onClick={() => setShowPassword(!showPassword)} className="text-gray-400">
+            <button 
+              type="button" 
+              onClick={() => setShowPassword(!showPassword)} 
+              className="text-gray-400 hover:text-indigo-500 transition-colors"
+            >
               {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
             </button>
           </div>
@@ -99,12 +110,12 @@ export default function ResetPassword() {
           {/* Action Button */}
           <button 
             disabled={loading}
-            className="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-200 dark:shadow-none"
+            className="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-200 dark:shadow-none disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
               <div className="w-5 h-5 border-4 border-white/30 border-t-white rounded-full animate-spin" />
             ) : (
-              "Update Password"
+              "Verify & Update Password"
             )}
           </button>
         </form>
