@@ -15,10 +15,17 @@ export default function PaymentHistory() {
   const [refreshing, setRefreshing] = useState(false);
   const [downloadingId, setDownloadingId] = useState(null);
 
-  // Helper: Date comparison logic
+  // --- ✅ UPDATED LOGIC: DATE EXPIRY CHECK ---
+  // Compares travel date with today's local date
   const isExpired = (travelDate) => {
-    const today = new Date().toISOString().split('T')[0];
-    return travelDate < today;
+    if (!travelDate) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
+    
+    const [year, month, day] = travelDate.split('-').map(Number);
+    const tripDate = new Date(year, month - 1, day);
+    
+    return tripDate < today;
   };
 
   const fetchBookings = async () => {
@@ -158,7 +165,7 @@ export default function PaymentHistory() {
 
       doc.setFontSize(8);
       doc.setTextColor(180, 180, 180);
-      doc.text("Model Polytechnic College Mattakkara - Project 2025", 105, 180, { align: 'center' });
+      doc.text("Model Polytechnic College Mattakkara - Project 2026", 105, 180, { align: 'center' });
 
       doc.save(`EnteBus_Ticket_${booking._id.slice(-6)}.pdf`);
     } catch (err) {
@@ -206,7 +213,9 @@ export default function PaymentHistory() {
             <AnimatePresence mode="popLayout">
               {bookings.map((booking) => {
                 const isPaid = booking.status === 'Paid' || booking.status === 'Boarded';
-                const expired = booking.status === 'Pending' && isExpired(booking.travelDate); //
+                
+                // ✅ UPDATED LOGIC: EXPIRY DETECTION
+                const expired = booking.status === 'Pending' && isExpired(booking.travelDate);
                 const isDownloading = downloadingId === booking._id;
 
                 return (
@@ -232,7 +241,7 @@ export default function PaymentHistory() {
                                 ? 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300' 
                                 : 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300'
                           }`}>
-                            {expired ? 'EXPIRED' : booking.status}
+                            {expired ? 'DATE EXPIRED' : booking.status}
                           </span>
                           <span className="text-xs text-gray-400 font-mono">#{booking._id.slice(-6).toUpperCase()}</span>
                         </div>
@@ -279,8 +288,9 @@ export default function PaymentHistory() {
                               </button>
                             </>
                           ) : expired ? (
+                            // ✅ UI CHANGE: NO RETRY BUTTON IF EXPIRED
                             <div className="bg-red-500 text-white px-4 py-1.5 rounded-full text-[10px] font-black flex items-center gap-1.5 shadow-lg shadow-red-200 dark:shadow-none">
-                              <AlertCircle size={14} /> DATE EXPIRED
+                              <AlertCircle size={14} /> BOOKING EXPIRED
                             </div>
                           ) : (
                             <>
