@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import { Html5Qrcode } from 'html5-qrcode';
 import { useNavigate, Link } from 'react-router-dom';
-import { useToast } from '../context/ToastContext'; // ✅ Added Toast Hook
+import { useToast } from '../context/ToastContext';
 import {
   Shield, Plus, LogOut, Edit, Trash2,
   Users, ArrowRight, History, MessageSquareWarning,
@@ -12,7 +12,7 @@ import {
 
 export default function Admin() {
   const navigate = useNavigate();
-  const { showToast } = useToast(); // ✅ Initialize Toast
+  const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState('dashboard');
   
   const [bookings, setBookings] = useState([]);
@@ -39,6 +39,7 @@ export default function Admin() {
 
   const API_URL = "https://entebus-api.onrender.com";
 
+  // Audio feedback for scanner
   const playSuccessBeep = () => {
     try {
       const context = new (window.AudioContext || window.webkitAudioContext)();
@@ -167,18 +168,25 @@ export default function Admin() {
     finally { setScanLoading(false); }
   };
 
+  // ✅ UPDATED: Boarding Logic with Manifest Auto-refresh
   const confirmBoarding = async () => {
     if (!ticketData || ticketStatus !== 'valid') return;
     setConfirmLoading(true);
     try {
       await axios.put(`${API_URL}/api/bookings/board/${ticketData._id}`);
+      
       setTicketData(prev => ({ ...prev, status: 'Boarded' }));
       playSuccessBeep();
       showToast("Passenger Boarded Successfully! ✅", "success");
+      
+      // Sync other parts of the UI
+      fetchBookings();
+      if(activeTab === 'manifest') handleFetchManifest(); 
     } catch (err) { 
       showToast("Failed to update boarding status.", "error"); 
+    } finally { 
+      setConfirmLoading(false); 
     }
-    finally { setConfirmLoading(false); }
   };
 
   const handleBusSubmit = async (e) => {
@@ -224,7 +232,6 @@ export default function Admin() {
     } catch (err) { showToast("Error updating complaint", "error"); }
   };
 
-  // ✅ UPDATED: Nice Notifications for Manifest
   const handleFetchManifest = async () => {
     if (!manifestBusId || !manifestDate) return showToast("Select Bus and Date.", "info");
     try {
@@ -388,11 +395,19 @@ export default function Admin() {
                     </thead>
                     <tbody className="divide-y dark:divide-slate-700">
                       {processedManifest.map((row, idx) => (
-                        <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-slate-700/30 transition text-sm">
+                        <tr key={idx} className={`hover:bg-gray-50 dark:hover:bg-slate-700/30 transition text-sm ${row.status === 'Boarded' ? 'bg-green-50/50 dark:bg-green-900/10' : ''}`}>
                           <td className="p-4 font-black dark:text-gray-300">#{row.seat}</td>
                           <td className="p-4 font-bold dark:text-white">{row.name}</td>
                           <td className="p-4 text-xs text-gray-500 leading-tight">{row.phone}<br/>{row.email}</td>
-                          <td className="p-4"><span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${row.status==='Boarded' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>{row.status}</span></td>
+                          <td className="p-4">
+                            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase shadow-sm border ${
+                              row.status === 'Boarded' 
+                                ? 'bg-green-100 text-green-700 border-green-200' 
+                                : 'bg-blue-100 text-blue-700 border-blue-200'
+                            }`}>
+                              {row.status}
+                            </span>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -499,7 +514,7 @@ export default function Admin() {
       {/* MOBILE LOGOUT FOOTER */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 p-4 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border-t dark:border-slate-700 flex justify-center z-50">
         <button onClick={handleLogout} className="text-red-600 font-black uppercase text-[11px] tracking-widest flex items-center gap-2">
-           <LogOut size={14}/> Exit Admin Portal
+            <LogOut size={14}/> Exit Admin Portal
         </button>
       </div>
 

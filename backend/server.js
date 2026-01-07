@@ -65,7 +65,7 @@ const bookingSchema = new mongoose.Schema({
   paymentId: String,
   orderId: String,
   amount: Number,
-  status: { type: String, default: 'Pending' } // Statuses: Pending, Paid, Boarded, Expired
+  status: { type: String, default: 'Pending' } // Statuses: Pending, Paid, Boarded, Expired, Refund Pending
 });
 const Booking = mongoose.model('Booking', bookingSchema);
 
@@ -110,7 +110,6 @@ app.post('/api/auth/login', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// --- ✅ UPDATED: PASSWORD RESET ROUTE ---
 app.post('/api/auth/reset-password', async (req, res) => {
   try {
     const { email, newPassword } = req.body;
@@ -119,10 +118,8 @@ app.post('/api/auth/reset-password', async (req, res) => {
       return res.status(400).json({ message: 'Email and new password are required' });
     }
 
-    // Find user using case-insensitive email
     const user = await User.findOne({ email: email.toLowerCase() });
     
-    // This provides the "Email is entered but not found" logic
     if (!user) {
       return res.status(404).json({ message: 'No account exists with this email address' });
     }
@@ -244,7 +241,6 @@ app.post('/api/bookings/verify', async (req, res) => {
       const booking = await Booking.findById(bookingId);
       if (!booking) return res.status(404).json({ message: "Booking not found" });
 
-      // Final check for expiry before confirming payment
       const today = new Date().toISOString().split('T')[0];
       if (booking.travelDate < today) {
         booking.status = 'Expired';
@@ -267,17 +263,58 @@ app.post('/api/bookings/verify', async (req, res) => {
   }
 });
 
+// ✅ UPDATED: Boarding Route with Validation
 app.put('/api/bookings/board/:id', async (req, res) => {
   try {
-      const booking = await Booking.findByIdAndUpdate(
-          req.params.id, 
-          { status: 'Boarded' }, 
-          { new: true }
-      );
-      if (!booking) return res.status(404).json({ message: "Booking not found" });
-      res.json({ message: "Passenger Boarded Successfully", booking });
+    const booking = await Booking.findById(req.params.id);
+    
+    if (!booking) return res.status(404).json({ message: "Booking not found" });
+
+    // Only allow boarding if the ticket is Paid
+    if (booking.status !== 'Paid') {
+      return res.status(400).json({ 
+        message: `Cannot board. Current ticket status is: ${booking.status}` 
+      });
+    }
+
+    booking.status = 'Boarded';
+    await booking.save();
+
+    res.json({ 
+      message: "Passenger Boarded Successfully", 
+      customerName: booking.customerName,
+      status: booking.status 
+    });
   } catch (err) {
-      res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ✅ NEW: Refund Request Logic
+app.post('/api/bookings/request-refund', async (req, res) => {
+  try {
+    const { bookingId } = req.body;
+    const booking = await Booking.findById(bookingId);
+
+    if (!booking) return res.status(404).json({ message: "Booking not found" });
+
+    // Logic: Only allow refund if status is 'Paid' and NOT 'Boarded'
+    if (booking.status !== 'Paid') {
+      return res.status(400).json({ message: "Only unboarded 'Paid' tickets are eligible for refund." });
+    }
+
+    // Optional: Add a date check to ensure the bus has already departed
+    const today = new Date().toISOString().split('T')[0];
+    if (booking.travelDate >= today) {
+       return res.status(400).json({ message: "Refunds can only be requested after the travel date has passed." });
+    }
+
+    booking.status = 'Refund Pending';
+    await booking.save();
+
+    res.json({ success: true, message: "Refund request submitted successfully." });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -307,8 +344,9 @@ app.get('/api/admin/history', async (req, res) => {
   try {
     const today = new Date().toISOString().split('T')[0];
 
+    // ✅ UPDATED: Added 'Refund Pending' to the match stage
     const history = await Booking.aggregate([
-      { $match: { status: { $in: ['Paid', 'Boarded'] }, travelDate: { $lt: today } }},
+      { $match: { status: { $in: ['Paid', 'Boarded', 'Refund Pending'] }, travelDate: { $lt: today } }},
       { $group: {
           _id: { busId: "$busId", date: "$travelDate" },
           totalRevenue: { $sum: "$amount" },
@@ -352,7 +390,6 @@ app.get('/api/bookings/user/:email', async (req, res) => {
     const today = new Date().toISOString().split('T')[0];
     const bookings = await Booking.find({ customerEmail: req.params.email }).populate('busId').sort({_id:-1});
     
-    // Dynamically mark pending past bookings as expired for the history view
     const updatedBookings = bookings.map(b => {
       const obj = b.toObject();
       if (obj.status === 'Pending' && obj.travelDate < today) {
@@ -365,6 +402,5 @@ app.get('/api/bookings/user/:email', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Handle Port 10000 for Render
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

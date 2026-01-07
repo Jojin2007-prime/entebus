@@ -4,32 +4,38 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Clock, Calendar, CheckCircle, RefreshCw, 
   MapPin, AlertTriangle, CreditCard, Download, 
-  Ticket, ChevronRight, AlertCircle 
+  Ticket, ChevronRight, AlertCircle, Trash2, Undo2
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import QRCode from 'qrcode';
+import { useToast } from '../context/ToastContext'; // Assuming you use this for showToast
 
 export default function PaymentHistory() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [downloadingId, setDownloadingId] = useState(null);
+  
+  const { showToast } = useToast();
+  const API_URL = "https://entebus-api.onrender.com";
 
-  // --- ✅ PRECISION DATE EXPIRY LOGIC ---
+  // --- ✅ Helper: Precision Date Expiry Logic ---
   const isExpired = (travelDate) => {
     if (!travelDate) return false;
-
-    // Get current date and set to absolute 00:00:00 local time
     const now = new Date();
     const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-
-    // Parse travelDate "YYYY-MM-DD" and set to absolute 00:00:00 local time
-    // Manual splitting avoids timezone shift errors common in MERN apps
     const [year, month, day] = travelDate.split('-').map(Number);
     const tripMidnight = new Date(year, month - 1, day).getTime();
-
-    // It is expired if the trip day is strictly before today
     return tripMidnight < todayMidnight;
+  };
+
+  const clearExpiredBookings = () => {
+    const activeBookings = bookings.filter(booking => {
+      const isPaid = booking.status === 'Paid' || booking.status === 'Boarded';
+      const expired = booking.status === 'Pending' && isExpired(booking.travelDate);
+      return isPaid || !expired;
+    });
+    setBookings(activeBookings);
   };
 
   const fetchBookings = async () => {
@@ -38,7 +44,7 @@ export default function PaymentHistory() {
     
     try {
       setRefreshing(true);
-      const res = await axios.get(`https://entebus-api.onrender.com/api/bookings/user/${user.email}`);
+      const res = await axios.get(`${API_URL}/api/bookings/user/${user.email}`);
       setBookings(res.data);
     } catch (err) {
       console.error("Error fetching bookings:", err);
@@ -48,23 +54,27 @@ export default function PaymentHistory() {
     }
   };
 
+  // --- ✅ NEW: Handling Refund Request ---
+  const handleRefundRequest = async (id) => {
+    try {
+      const res = await axios.post(`${API_URL}/api/bookings/request-refund`, { bookingId: id });
+      if (res.data.success) {
+        showToast("Refund Request Sent Successfully!", "success");
+        fetchBookings(); // Refresh the list to show "Refund Pending"
+      }
+    } catch (err) {
+      showToast(err.response?.data?.message || "Refund request failed", "error");
+    }
+  };
+
   useEffect(() => {
     fetchBookings();
   }, []);
 
-  const formatTime = (time24) => {
-    if (!time24) return "";
-    const [hours, minutes] = time24.split(':');
-    const period = +hours >= 12 ? 'PM' : 'AM';
-    const hours12 = (+hours % 12) || 12;
-    return `${hours12}:${minutes} ${period}`;
-  };
-
-  // --- ✅ REMOVED ALERT BOX LOGIC ---
   const handleRetryPayment = async (booking) => {
     const user = JSON.parse(localStorage.getItem('user'));
     try {
-      const { data: order } = await axios.post('https://entebus-api.onrender.com/api/payment/order', { 
+      const { data: order } = await axios.post(`${API_URL}/api/payment/order`, { 
         amount: booking.amount 
       });
       
@@ -77,7 +87,7 @@ export default function PaymentHistory() {
         order_id: order.id,
         handler: async function (response) {
           try {
-            await axios.post('https://entebus-api.onrender.com/api/bookings/verify', {
+            await axios.post(`${API_URL}/api/bookings/verify`, {
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
@@ -85,7 +95,7 @@ export default function PaymentHistory() {
             });
             fetchBookings();
           } catch (error) {
-            console.error("Verification Failed");
+            showToast("Payment Verification Failed", "error");
           }
         },
         prefill: { name: user.name, email: user.email },
@@ -95,7 +105,7 @@ export default function PaymentHistory() {
       const rzp = new window.Razorpay(options);
       rzp.open();
     } catch (err) { 
-      console.error("Could not initiate payment."); 
+      showToast("Could not initiate payment.", "error"); 
     }
   };
 
@@ -114,64 +124,8 @@ export default function PaymentHistory() {
       doc.setFillColor(79, 70, 229); 
       doc.rect(0, 0, 210, 45, 'F');
       doc.setTextColor(255, 255, 255);
-      doc.setFontSize(26);
-      doc.setFont("helvetica", "bold");
       doc.text("ENTE BUS", 20, 28);
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "normal");
-      doc.text("OFFICIAL E-TICKET", 20, 36);
-
-      doc.setTextColor(40, 40, 40);
-      doc.setFontSize(9);
-      doc.text(`BOOKING ID: ${booking._id.toUpperCase()}`, 20, 55);
-      doc.text(`ISSUED ON: ${new Date().toLocaleString()}`, 130, 55);
-
-      doc.setDrawColor(220, 220, 220);
-      doc.setLineWidth(0.5);
-      doc.roundedRect(20, 65, 170, 95, 3, 3);
-
-      doc.setFontSize(16);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(79, 70, 229);
-      doc.text(booking.busId?.name || "Bus Details", 30, 80);
-      
-      doc.setTextColor(80, 80, 80);
-      doc.setFontSize(11);
-      doc.setFont("helvetica", "bold");
-      doc.text("FROM:", 30, 92);
-      doc.text("TO:", 30, 102);
-      
-      doc.setFont("helvetica", "normal");
-      doc.text(booking.busId?.from || "N/A", 50, 92);
-      doc.text(booking.busId?.to || "N/A", 50, 102);
-
-      doc.setFont("helvetica", "bold");
-      doc.text("TRAVEL DATE:", 30, 115);
-      doc.text("TIME:", 30, 125);
-      doc.text("SEATS:", 30, 135);
-
-      doc.setFont("helvetica", "normal");
-      doc.text(booking.travelDate || "N/A", 70, 115);
-      doc.text(formatTime(booking.busId?.departureTime), 70, 125);
-      doc.setTextColor(16, 185, 129);
-      doc.text(booking.seatNumbers.join(", "), 70, 135);
-
       doc.addImage(qrCodeDataUri, 'PNG', 135, 80, 45, 45);
-      doc.setFontSize(8);
-      doc.setTextColor(150, 150, 150);
-      doc.text("SCAN TO VERIFY", 145, 130);
-
-      doc.setFillColor(249, 250, 251);
-      doc.rect(21, 140, 168, 19, 'F');
-      doc.setTextColor(40, 40, 40);
-      doc.setFont("helvetica", "bold");
-      doc.text(`PASSENGER: ${booking.customerName.toUpperCase()}`, 30, 152);
-      doc.text(`TOTAL PAID: RS. ${booking.amount}`, 130, 152);
-
-      doc.setFontSize(8);
-      doc.setTextColor(180, 180, 180);
-      doc.text("Model Polytechnic College Mattakkara - Project 2026", 105, 180, { align: 'center' });
-
       doc.save(`EnteBus_Ticket_${booking._id.slice(-6)}.pdf`);
     } catch (err) {
       console.error("PDF Error:", err);
@@ -190,12 +144,21 @@ export default function PaymentHistory() {
             </h1>
             <p className="text-gray-500 dark:text-gray-400 mt-1 font-medium">History of your bus bookings</p>
           </div>
-          <button 
-            onClick={fetchBookings}
-            className="p-2 bg-white dark:bg-gray-800 rounded-full shadow-sm border border-gray-200 dark:border-gray-700 text-gray-500 hover:rotate-180 transition-all duration-500"
-          >
-            <RefreshCw size={20} className={refreshing ? 'animate-spin' : ''} />
-          </button>
+          
+          <div className="flex gap-3">
+            <button 
+              onClick={clearExpiredBookings}
+              className="flex items-center gap-2 px-4 py-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-xl text-xs font-bold border border-red-100 dark:border-red-900/30 hover:bg-red-100 transition-all"
+            >
+              <Trash2 size={16} /> Clear Expired
+            </button>
+            <button 
+              onClick={fetchBookings}
+              className="p-2 bg-white dark:bg-gray-800 rounded-full shadow-sm border border-gray-200 dark:border-gray-700 text-gray-500 hover:rotate-180 transition-all duration-500"
+            >
+              <RefreshCw size={20} className={refreshing ? 'animate-spin' : ''} />
+            </button>
+          </div>
         </header>
 
         {loading ? (
@@ -209,10 +172,8 @@ export default function PaymentHistory() {
             <AnimatePresence mode="popLayout">
               {bookings.map((booking) => {
                 const isPaid = booking.status === 'Paid' || booking.status === 'Boarded';
-                
-                // ✅ DEFINITIVE EXPIRY DETECTION
                 const expired = booking.status === 'Pending' && isExpired(booking.travelDate);
-                const isDownloading = downloadingId === booking._id;
+                const canRequestRefund = booking.status === 'Paid' && isExpired(booking.travelDate);
 
                 return (
                   <motion.div 
@@ -220,6 +181,7 @@ export default function PaymentHistory() {
                     key={booking._id} 
                     initial={{ opacity: 0, scale: 0.95 }} 
                     animate={{ opacity: 1, scale: 1 }} 
+                    exit={{ opacity: 0, x: -100 }}
                     className={`group relative overflow-hidden p-6 rounded-[2rem] border transition-all duration-300
                       ${isPaid 
                         ? 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-xl' 
@@ -231,33 +193,28 @@ export default function PaymentHistory() {
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-4">
                           <span className={`px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase ${
-                            isPaid 
-                              ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300' 
-                              : expired 
-                                ? 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400' 
-                                : 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300'
+                            booking.status === 'Refund Pending' 
+                              ? 'bg-purple-100 text-purple-700'
+                              : isPaid ? 'bg-indigo-100 text-indigo-700' 
+                              : expired ? 'bg-red-100 text-red-700' 
+                              : 'bg-amber-100 text-amber-700'
                           }`}>
-                            {expired ? 'BOOKING EXPIRED' : booking.status}
+                            {expired && booking.status === 'Pending' ? 'BOOKING EXPIRED' : booking.status}
                           </span>
-                          <span className="text-xs text-gray-400 font-mono">#{booking._id.slice(-6).toUpperCase()}</span>
                         </div>
 
-                        <h2 className={`text-2xl font-extrabold mb-4 transition-colors ${expired ? 'text-gray-400' : 'text-gray-900 dark:text-white'}`}>
+                        <h2 className={`text-2xl font-extrabold mb-4 transition-colors ${expired && !isPaid ? 'text-gray-400' : 'text-gray-900 dark:text-white'}`}>
                           {booking.busId?.name || 'Bus Unavailable'}
                         </h2>
 
-                        <div className="flex flex-wrap gap-4 text-sm">
+                        <div className="flex flex-wrap gap-4 text-sm font-bold">
                           <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-700/50 px-3 py-2 rounded-xl text-gray-700 dark:text-gray-300">
                             <MapPin size={16} className="text-indigo-500" />
-                            <span className="font-bold">{booking.busId?.from} → {booking.busId?.to}</span>
+                            {booking.busId?.from} → {booking.busId?.to}
                           </div>
                           <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-700/50 px-3 py-2 rounded-xl text-gray-700 dark:text-gray-300">
                             <Calendar size={16} className={expired ? "text-red-400" : "text-rose-500"} />
-                            <span className="font-bold">{booking.travelDate}</span>
-                          </div>
-                          <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-700/50 px-3 py-2 rounded-xl text-gray-700 dark:text-gray-300">
-                            <Clock size={16} className="text-emerald-500" />
-                            <span className="font-bold">{formatTime(booking.busId?.departureTime)}</span>
+                            {booking.travelDate}
                           </div>
                         </div>
                       </div>
@@ -265,46 +222,53 @@ export default function PaymentHistory() {
                       <div className="flex flex-row md:flex-col justify-between items-center md:items-end border-t md:border-t-0 md:border-l border-gray-100 dark:border-gray-700 pt-4 md:pt-0 md:pl-6 min-w-[140px]">
                         <div className="text-center md:text-right">
                           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Amount</p>
-                          <p className={`text-3xl font-black ${expired ? 'text-gray-400' : 'text-indigo-600 dark:text-indigo-400'}`}>₹{booking.amount}</p>
+                          <p className={`text-3xl font-black ${expired && !isPaid ? 'text-gray-400' : 'text-indigo-600 dark:text-indigo-400'}`}>₹{booking.amount}</p>
                         </div>
 
                         <div className="flex flex-col items-end gap-3 mt-4">
-                          {isPaid ? (
+                          {booking.status === 'Boarded' ? (
+                            <div className="bg-emerald-500 text-white px-4 py-1.5 rounded-full text-[10px] font-black flex items-center gap-1.5 shadow-lg">
+                              <CheckCircle size={14} /> BOARDED
+                            </div>
+                          ) : booking.status === 'Paid' ? (
                             <>
-                              <div className="bg-emerald-500 text-white px-4 py-1.5 rounded-full text-[10px] font-black flex items-center gap-1.5 shadow-lg shadow-emerald-200 dark:shadow-none">
-                                <CheckCircle size={14} /> PAID
+                              <div className="bg-indigo-500 text-white px-4 py-1.5 rounded-full text-[10px] font-black flex items-center gap-1.5 shadow-lg">
+                                <CreditCard size={14} /> PAID
                               </div>
-                              <button 
-                                onClick={() => handleDownload(booking)}
-                                disabled={isDownloading}
-                                className={`flex items-center gap-2 text-indigo-600 dark:text-indigo-400 text-xs font-bold hover:underline ${isDownloading ? 'opacity-50' : ''}`}
-                              >
-                                {isDownloading ? <RefreshCw size={14} className="animate-spin" /> : <Download size={14} />}
-                                {isDownloading ? 'Preparing...' : 'Ticket PDF'}
-                              </button>
+                              <div className="flex flex-col gap-2 mt-2">
+                                <button 
+                                  onClick={() => handleDownload(booking)}
+                                  className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 text-xs font-bold hover:underline"
+                                >
+                                  <Download size={14} /> Ticket PDF
+                                </button>
+                                
+                                {/* ✅ REFUND BUTTON: Only if ticket is Paid and Date is Past */}
+                                {canRequestRefund && (
+                                  <button 
+                                    onClick={() => handleRefundRequest(booking._id)}
+                                    className="flex items-center gap-2 bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase hover:bg-red-200 transition"
+                                  >
+                                    <Undo2 size={12} /> Request Refund
+                                  </button>
+                                )}
+                              </div>
                             </>
+                          ) : booking.status === 'Refund Pending' ? (
+                             <div className="bg-purple-500 text-white px-4 py-1.5 rounded-full text-[10px] font-black flex items-center gap-1.5 shadow-lg">
+                               <RefreshCw size={14} className="animate-spin" /> REFUND PROCESSING
+                             </div>
                           ) : expired ? (
-                            /* --- ✅ ANIMATED EXPIRY MESSAGE --- */
-                            <motion.div 
-                              initial={{ opacity: 0, scale: 0.8 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              className="bg-gray-200 dark:bg-gray-700 text-gray-500 px-4 py-2 rounded-xl text-[10px] font-black flex items-center gap-1.5 border border-gray-300 dark:border-gray-600"
-                            >
+                            <div className="bg-gray-200 dark:bg-gray-700 text-gray-500 px-4 py-2 rounded-xl text-[10px] font-black flex items-center gap-1.5 border border-gray-300">
                               <AlertCircle size={14} /> NO LONGER PAYABLE
-                            </motion.div>
+                            </div>
                           ) : (
-                            /* --- ✅ PAY NOW BUTTON ONLY SHOWS FOR ACTIVE PENDING --- */
-                            <>
-                              <div className="bg-amber-500 text-white px-4 py-1.5 rounded-full text-[10px] font-black flex items-center gap-1.5">
-                                <AlertTriangle size={14} /> PENDING
-                              </div>
-                              <button 
-                                onClick={() => handleRetryPayment(booking)}
-                                className="bg-gray-900 dark:bg-indigo-600 text-white px-5 py-2.5 rounded-2xl text-xs font-black flex items-center gap-2 hover:bg-black transition-all active:scale-95 shadow-lg shadow-gray-200"
-                              >
-                                <RefreshCw size={14} /> PAY NOW
-                              </button>
-                            </>
+                            <button 
+                              onClick={() => handleRetryPayment(booking)}
+                              className="bg-gray-900 dark:bg-indigo-600 text-white px-5 py-2.5 rounded-2xl text-xs font-black flex items-center gap-2 hover:bg-black transition-all active:scale-95 shadow-lg"
+                            >
+                              <RefreshCw size={14} /> PAY NOW
+                            </button>
                           )}
                         </div>
                       </div>
