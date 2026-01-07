@@ -113,27 +113,20 @@ app.post('/api/auth/login', async (req, res) => {
 app.post('/api/auth/reset-password', async (req, res) => {
   try {
     const { email, newPassword } = req.body;
-
     if (!email || !newPassword) {
       return res.status(400).json({ message: 'Email and new password are required' });
     }
-
     const user = await User.findOne({ email: email.toLowerCase() });
-    
     if (!user) {
       return res.status(404).json({ message: 'No account exists with this email address' });
     }
-
     if (newPassword.length < 8) {
       return res.status(400).json({ message: 'New password must be at least 8 characters' });
     }
-
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(newPassword, salt);
-
     user.password = hashedPassword;
     await user.save();
-
     res.json({ message: 'Success! Your password has been updated.' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -263,14 +256,11 @@ app.post('/api/bookings/verify', async (req, res) => {
   }
 });
 
-// ✅ UPDATED: Boarding Route with Validation
 app.put('/api/bookings/board/:id', async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
-    
     if (!booking) return res.status(404).json({ message: "Booking not found" });
 
-    // Only allow boarding if the ticket is Paid
     if (booking.status !== 'Paid') {
       return res.status(400).json({ 
         message: `Cannot board. Current ticket status is: ${booking.status}` 
@@ -290,20 +280,16 @@ app.put('/api/bookings/board/:id', async (req, res) => {
   }
 });
 
-// ✅ NEW: Refund Request Logic
 app.post('/api/bookings/request-refund', async (req, res) => {
   try {
     const { bookingId } = req.body;
     const booking = await Booking.findById(bookingId);
-
     if (!booking) return res.status(404).json({ message: "Booking not found" });
 
-    // Logic: Only allow refund if status is 'Paid' and NOT 'Boarded'
     if (booking.status !== 'Paid') {
       return res.status(400).json({ message: "Only unboarded 'Paid' tickets are eligible for refund." });
     }
 
-    // Optional: Add a date check to ensure the bus has already departed
     const today = new Date().toISOString().split('T')[0];
     if (booking.travelDate >= today) {
        return res.status(400).json({ message: "Refunds can only be requested after the travel date has passed." });
@@ -330,27 +316,27 @@ app.get('/api/bookings/occupied', async (req, res) => {
 
 // 5. Admin Routes
 
-// ✅ Corrected Manifest Logic
+// ✅ Corrected Manifest Route in server.js
 app.get('/api/admin/manifest', async (req, res) => {
-  const { busId, date } = req.query;
+  const { busId, date } = req.query; // Extracts from ?busId=...&date=...
   try {
-    // Force the query to match both Bus and the specific Travel Date 
     const query = { 
       busId: busId, 
-      travelDate: date, 
+      travelDate: date, // MUST match format "YYYY-MM-DD"
       status: { $in: ['Paid', 'Boarded'] } 
     };
 
-    const bookings = await Booking.find(query).populate('busId').sort({ seatNumbers: 1 });
+    const bookings = await Booking.find(query).populate('busId');
+    console.log(`Found ${bookings.length} passengers for bus ${busId} on ${date}`); // Check terminal logs!
     res.json(bookings);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { 
+    res.status(500).json({ error: err.message }); 
+  }
 });
 
 app.get('/api/admin/history', async (req, res) => {
   try {
     const today = new Date().toISOString().split('T')[0];
-
-    // ✅ UPDATED: Added 'Refund Pending' to the match stage
     const history = await Booking.aggregate([
       { $match: { status: { $in: ['Paid', 'Boarded', 'Refund Pending'] }, travelDate: { $lt: today } }},
       { $group: {

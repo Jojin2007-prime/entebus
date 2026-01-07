@@ -168,18 +168,14 @@ export default function Admin() {
     finally { setScanLoading(false); }
   };
 
-  // ✅ UPDATED: Boarding Logic with Manifest Auto-refresh
   const confirmBoarding = async () => {
     if (!ticketData || ticketStatus !== 'valid') return;
     setConfirmLoading(true);
     try {
       await axios.put(`${API_URL}/api/bookings/board/${ticketData._id}`);
-      
       setTicketData(prev => ({ ...prev, status: 'Boarded' }));
       playSuccessBeep();
       showToast("Passenger Boarded Successfully! ✅", "success");
-      
-      // Sync other parts of the UI
       fetchBookings();
       if(activeTab === 'manifest') handleFetchManifest(); 
     } catch (err) { 
@@ -232,21 +228,25 @@ export default function Admin() {
     } catch (err) { showToast("Error updating complaint", "error"); }
   };
 
+  // ✅ UPDATED: Manifest Logic with Params and Debugging
   const handleFetchManifest = async () => {
-    if (!manifestBusId || !manifestDate) return showToast("Select Bus and Date.", "info");
+    if (!manifestBusId || !manifestDate) {
+      return showToast("Select Bus and Date first.", "info");
+    }
     try {
-      const res = await axios.get(`${API_URL}/api/admin/manifest?busId=${manifestBusId}&date=${manifestDate}`);
+      const res = await axios.get(`${API_URL}/api/admin/manifest`, {
+        params: { busId: manifestBusId, date: manifestDate }
+      });
+      console.log("Data from Server:", res.data); // ✅ Check this in F12 Console
       
       if (res.data.length === 0) {
         showToast("No bookings found for this trip", "info");
-        setManifestData([]);
-        return;
+      } else {
+        showToast(`Manifest loaded: ${res.data.length} passengers found`, "success");
       }
-
-      showToast(`Manifest loaded: ${res.data.length} passengers found`, "success");
       setManifestData(res.data);
-    } catch (err) { 
-      showToast("Failed to load manifest. Check connection.", "error"); 
+    } catch (err) {
+      showToast("Error connecting to backend", "error");
     }
   };
 
@@ -372,17 +372,22 @@ export default function Admin() {
             <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border dark:border-slate-700 shadow-sm grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="text-[10px] font-black uppercase text-gray-400 mb-2 block tracking-widest">Select Route</label>
-                  <select className="w-full p-4 border dark:border-slate-700 rounded-xl bg-gray-50 dark:bg-slate-900 dark:text-white font-bold text-sm" onChange={(e) => setManifestBusId(e.target.value)}>
+                  <select className="w-full p-4 border dark:border-slate-700 rounded-xl bg-gray-50 dark:bg-slate-900 dark:text-white font-bold text-sm" value={manifestBusId} onChange={(e) => setManifestBusId(e.target.value)}>
                     <option value="">-- Choose Route --</option>
                     {buses.map(b => <option key={b._id} value={b._id}>{b.name} ({b.from} - {b.to})</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="text-[10px] font-black uppercase text-gray-400 mb-2 block tracking-widest">Travel Date</label>
-                  <input type="date" className="w-full p-4 border dark:border-slate-700 rounded-xl bg-gray-50 dark:bg-slate-900 dark:text-white font-bold text-sm" onChange={(e) => setManifestDate(e.target.value)} />
+                  <input type="date" className="w-full p-4 border dark:border-slate-700 rounded-xl bg-gray-50 dark:bg-slate-900 dark:text-white font-bold text-sm" value={manifestDate} onChange={(e) => setManifestDate(e.target.value)} />
                 </div>
                 <div className="flex items-end">
-                  <button onClick={handleFetchManifest} className="w-full bg-indigo-600 text-white py-4 rounded-xl font-bold uppercase text-xs italic tracking-widest shadow-lg">Generate Manifest</button>
+                  <button 
+                    onClick={handleFetchManifest} 
+                    className="w-full bg-indigo-600 text-white py-4 rounded-xl font-bold uppercase text-xs italic tracking-widest shadow-lg active:scale-95 transition-all"
+                  >
+                    Generate Manifest
+                  </button>
                 </div>
             </div>
             
