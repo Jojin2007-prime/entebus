@@ -15,11 +15,14 @@ export default function PaymentHistory() {
   const [refreshing, setRefreshing] = useState(false);
   const [downloadingId, setDownloadingId] = useState(null);
 
+  // ✅ Consistent Backend URL
+  const API_URL = "https://entebus-api.onrender.com";
+
   // --- ✅ Helper: Precision Date Expiry Logic ---
   const isExpired = (travelDate) => {
     if (!travelDate) return false;
     const now = new Date();
-    // Normalize to midnight local time
+    // Normalize to midnight local time to avoid premature expiry
     const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
     const [year, month, day] = travelDate.split('-').map(Number);
     const tripMidnight = new Date(year, month - 1, day).getTime();
@@ -31,7 +34,7 @@ export default function PaymentHistory() {
     const activeBookings = bookings.filter(booking => {
       const isPaid = booking.status === 'Paid' || booking.status === 'Boarded';
       const expired = booking.status === 'Pending' && isExpired(booking.travelDate);
-      return isPaid || !expired; // Keep if paid or NOT expired
+      return isPaid || !expired; 
     });
     setBookings(activeBookings);
   };
@@ -43,7 +46,7 @@ export default function PaymentHistory() {
     
     try {
       setRefreshing(true);
-      const res = await axios.get(`https://entebus-api.onrender.com/api/bookings/user/${user.email}`);
+      const res = await axios.get(`${API_URL}/api/bookings/user/${user.email}`);
       setBookings(res.data);
     } catch (err) {
       console.error("Error fetching bookings:", err);
@@ -57,19 +60,11 @@ export default function PaymentHistory() {
     fetchBookings();
   }, []);
 
-  const formatTime = (time24) => {
-    if (!time24) return "";
-    const [hours, minutes] = time24.split(':');
-    const period = +hours >= 12 ? 'PM' : 'AM';
-    const hours12 = (+hours % 12) || 12;
-    return `${hours12}:${minutes} ${period}`;
-  };
-
   // --- ✅ API Handler: Razorpay Retry ---
   const handleRetryPayment = async (booking) => {
     const user = JSON.parse(localStorage.getItem('user'));
     try {
-      const { data: order } = await axios.post('https://entebus-api.onrender.com/api/payment/order', { 
+      const { data: order } = await axios.post(`${API_URL}/api/payment/order`, { 
         amount: booking.amount 
       });
       
@@ -82,7 +77,7 @@ export default function PaymentHistory() {
         order_id: order.id,
         handler: async function (response) {
           try {
-            await axios.post('https://entebus-api.onrender.com/api/bookings/verify', {
+            await axios.post(`${API_URL}/api/bookings/verify`, {
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
@@ -117,6 +112,7 @@ export default function PaymentHistory() {
         color: { dark: '#1e1b4b', light: '#ffffff' }
       });
 
+      // PDF Styling
       doc.setFillColor(79, 70, 229); 
       doc.rect(0, 0, 210, 45, 'F');
       doc.setTextColor(255, 255, 255);
@@ -142,17 +138,16 @@ export default function PaymentHistory() {
       <div className="max-w-4xl mx-auto">
         <header className="flex justify-between items-end mb-10">
           <div>
-            <h1 className="text-4xl font-black text-gray-900 dark:text-white tracking-tighter flex items-center gap-3">
+            <h1 className="text-4xl font-black text-gray-900 dark:text-white tracking-tighter flex items-center gap-3 italic uppercase">
               My Journey <Ticket className="text-indigo-500" size={32} />
             </h1>
             <p className="text-gray-500 dark:text-gray-400 mt-1 font-medium">History of your bus bookings</p>
           </div>
           
           <div className="flex gap-3">
-            {/* ✅ NEW: CLEAR EXPIRED BUTTON */}
             <button 
               onClick={clearExpiredBookings}
-              className="flex items-center gap-2 px-4 py-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-xl text-xs font-bold border border-red-100 dark:border-red-900/30 hover:bg-red-100 transition-all"
+              className="flex items-center gap-2 px-4 py-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-xl text-xs font-black uppercase italic border border-red-100 dark:border-red-900/30 hover:bg-red-100 transition-all"
             >
               <Trash2 size={16} /> Clear Expired
             </button>
@@ -169,7 +164,7 @@ export default function PaymentHistory() {
         {loading ? (
           <div className="space-y-4">
             {[1, 2, 3].map(i => (
-              <div key={i} className="h-40 w-full bg-gray-200 dark:bg-gray-800 animate-pulse rounded-3xl" />
+              <div key={i} className="h-40 w-full bg-gray-200 dark:bg-gray-800 animate-pulse rounded-[2rem]" />
             ))}
           </div>
         ) : (
@@ -178,7 +173,6 @@ export default function PaymentHistory() {
               {bookings.map((booking) => {
                 const isPaid = booking.status === 'Paid' || booking.status === 'Boarded';
                 const expired = booking.status === 'Pending' && isExpired(booking.travelDate);
-                const isDownloading = downloadingId === booking._id;
 
                 return (
                   <motion.div 
@@ -186,12 +180,12 @@ export default function PaymentHistory() {
                     key={booking._id} 
                     initial={{ opacity: 0, scale: 0.95 }} 
                     animate={{ opacity: 1, scale: 1 }} 
-                    exit={{ opacity: 0, x: -100 }} // ✅ Animation for clearing items
-                    className={`group relative overflow-hidden p-6 rounded-[2rem] border transition-all duration-300
+                    exit={{ opacity: 0, x: -100 }} 
+                    className={`group relative overflow-hidden p-6 rounded-[2.5rem] border transition-all duration-300
                       ${isPaid 
                         ? 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-xl' 
                         : expired 
-                          ? 'bg-red-50/50 dark:bg-red-900/10 border-red-200 dark:border-red-900/30' 
+                          ? 'bg-red-50/50 dark:bg-red-900/10 border-red-200 dark:border-red-900/30 grayscale' 
                           : 'bg-amber-50/50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-900/30'}`}
                   >
                     <div className="flex flex-col md:flex-row justify-between gap-6 relative z-10">
@@ -208,7 +202,7 @@ export default function PaymentHistory() {
                           </span>
                         </div>
 
-                        <h2 className={`text-2xl font-extrabold mb-4 transition-colors ${expired ? 'text-gray-400' : 'text-gray-900 dark:text-white'}`}>
+                        <h2 className={`text-2xl font-black mb-4 transition-colors uppercase italic ${expired ? 'text-gray-400' : 'text-gray-900 dark:text-white'}`}>
                           {booking.busId?.name || 'Bus Unavailable'}
                         </h2>
 
@@ -226,41 +220,38 @@ export default function PaymentHistory() {
 
                       <div className="flex flex-row md:flex-col justify-between items-center md:items-end border-t md:border-t-0 md:border-l border-gray-100 dark:border-gray-700 pt-4 md:pt-0 md:pl-6 min-w-[140px]">
                         <div className="text-center md:text-right">
-                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Amount</p>
+                          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Amount</p>
                           <p className={`text-3xl font-black ${expired ? 'text-gray-400' : 'text-indigo-600 dark:text-indigo-400'}`}>₹{booking.amount}</p>
                         </div>
 
                         <div className="flex flex-col items-end gap-3 mt-4">
                           {isPaid ? (
                             <>
-                              <div className="bg-emerald-500 text-white px-4 py-1.5 rounded-full text-[10px] font-black flex items-center gap-1.5 shadow-lg shadow-emerald-200 dark:shadow-none">
+                              <div className="bg-emerald-500 text-white px-4 py-1.5 rounded-full text-[10px] font-black flex items-center gap-1.5 shadow-lg shadow-emerald-200 dark:shadow-none italic uppercase">
                                 <CheckCircle size={14} /> PAID
                               </div>
                               <button 
                                 onClick={() => handleDownload(booking)}
-                                className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 text-xs font-bold hover:underline"
+                                className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 text-xs font-black uppercase italic hover:underline"
                               >
                                 <Download size={14} /> Ticket PDF
                               </button>
                             </>
                           ) : expired ? (
-                            /* ✅ NO LONGER PAYABLE UI */
                             <motion.div 
-                              initial={{ opacity: 0, scale: 0.8 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              className="bg-gray-200 dark:bg-gray-700 text-gray-500 px-4 py-2 rounded-xl text-[10px] font-black flex items-center gap-1.5 border border-gray-300"
+                              initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                              className="bg-gray-200 dark:bg-gray-700 text-gray-500 px-4 py-2 rounded-xl text-[10px] font-black italic flex items-center gap-1.5 border border-gray-300 uppercase"
                             >
                               <AlertCircle size={14} /> NO LONGER PAYABLE
                             </motion.div>
                           ) : (
-                            /* ✅ PAY NOW BUTTON */
                             <>
-                              <div className="bg-amber-500 text-white px-4 py-1.5 rounded-full text-[10px] font-black flex items-center gap-1.5">
+                              <div className="bg-amber-500 text-white px-4 py-1.5 rounded-full text-[10px] font-black flex items-center gap-1.5 uppercase italic">
                                 <AlertTriangle size={14} /> PENDING
                               </div>
                               <button 
                                 onClick={() => handleRetryPayment(booking)}
-                                className="bg-gray-900 dark:bg-indigo-600 text-white px-5 py-2.5 rounded-2xl text-xs font-black flex items-center gap-2 hover:bg-black transition-all active:scale-95 shadow-lg"
+                                className="bg-gray-900 dark:bg-indigo-600 text-white px-6 py-2.5 rounded-2xl text-xs font-black uppercase italic flex items-center gap-2 hover:bg-black transition-all active:scale-95 shadow-lg"
                               >
                                 <RefreshCw size={14} /> PAY NOW
                               </button>
@@ -273,6 +264,11 @@ export default function PaymentHistory() {
                 );
               })}
             </AnimatePresence>
+            {bookings.length === 0 && !loading && (
+              <div className="text-center py-20 opacity-30 font-black uppercase italic text-gray-400">
+                No Journey History Found
+              </div>
+            )}
           </div>
         )}
       </div>

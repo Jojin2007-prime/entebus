@@ -59,11 +59,11 @@ const bookingSchema = new mongoose.Schema({
   seatNumbers: [Number],
   customerEmail: String,
   customerName: String,
-  customerPhone: String, // ✅ Added missing field
+  customerPhone: String, // ✅ Field restored
   bookingDate: { type: Date, default: Date.now },
   travelDate: String,
-  paymentId: String,     // ✅ Added missing field
-  orderId: String,       // ✅ Added missing field
+  paymentId: String,     // ✅ Field restored
+  orderId: String,       // ✅ Field restored
   amount: Number,
   status: { type: String, default: 'Pending' } // Statuses: Pending, Paid, Boarded, Expired
 });
@@ -113,16 +113,12 @@ app.post('/api/auth/login', async (req, res) => {
 app.post('/api/auth/reset-password', async (req, res) => {
   try {
     const { email, newPassword } = req.body;
-
     if (!email || !newPassword) {
       return res.status(400).json({ message: 'Email and new password are required' });
     }
 
     const user = await User.findOne({ email: email.toLowerCase() });
-    
-    if (!user) {
-      return res.status(404).json({ message: 'No account exists with this email address' });
-    }
+    if (!user) return res.status(404).json({ message: 'No account exists with this email address' });
 
     if (newPassword.length < 8) {
       return res.status(400).json({ message: 'New password must be at least 8 characters' });
@@ -130,14 +126,11 @@ app.post('/api/auth/reset-password', async (req, res) => {
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(newPassword, salt);
-
     user.password = hashedPassword;
     await user.save();
 
     res.json({ message: 'Success! Your password has been updated.' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.post('/api/admin/login', (req, res) => {
@@ -241,7 +234,6 @@ app.post('/api/bookings/verify', async (req, res) => {
       const booking = await Booking.findById(bookingId);
       if (!booking) return res.status(404).json({ message: "Booking not found" });
 
-      // Final check for expiry before confirming payment
       const today = new Date().toISOString().split('T')[0];
       if (booking.travelDate < today) {
         booking.status = 'Expired';
@@ -254,14 +246,11 @@ app.post('/api/bookings/verify', async (req, res) => {
       booking.status = 'Paid';
       await booking.save();
       
-      console.log(`✅ Payment Verified for Booking: ${bookingId}`);
       res.json({ success: true, message: 'Success', bookingId: booking._id });
     } else {
       res.status(400).json({ success: false, message: 'Invalid Signature' });
     }
-  } catch (err) { 
-    res.status(500).json({ error: err.message }); 
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.put('/api/bookings/board/:id', async (req, res) => {
@@ -273,9 +262,7 @@ app.put('/api/bookings/board/:id', async (req, res) => {
       );
       if (!booking) return res.status(404).json({ message: "Booking not found" });
       res.json({ message: "Passenger Boarded Successfully", booking });
-  } catch (err) {
-      res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // 4. Occupied Seats (Date Specific)
@@ -289,10 +276,10 @@ app.get('/api/bookings/occupied', async (req, res) => {
 });
 
 // 5. Admin Routes
-// ✅ UPDATED: Filter now includes 'Pending' so your current test data appears
 app.get('/api/admin/manifest', async (req, res) => {
   const { busId, date } = req.query;
   try {
+    // ✅ Includes 'Pending' so test bookings are visible in manifest
     const query = { 
       busId, 
       status: { $in: ['Paid', 'Boarded', 'Pending'] } 
@@ -307,7 +294,6 @@ app.get('/api/admin/manifest', async (req, res) => {
 app.get('/api/admin/history', async (req, res) => {
   try {
     const today = new Date().toISOString().split('T')[0];
-
     const history = await Booking.aggregate([
       { $match: { status: { $in: ['Paid', 'Boarded'] }, travelDate: { $lt: today } }},
       { $group: {
@@ -353,7 +339,6 @@ app.get('/api/bookings/user/:email', async (req, res) => {
     const today = new Date().toISOString().split('T')[0];
     const bookings = await Booking.find({ customerEmail: req.params.email }).populate('busId').sort({_id:-1});
     
-    // Dynamically mark pending past bookings as expired for the history view
     const updatedBookings = bookings.map(b => {
       const obj = b.toObject();
       if (obj.status === 'Pending' && obj.travelDate < today) {
@@ -366,6 +351,5 @@ app.get('/api/bookings/user/:email', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Handle Port 10000 for Render
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

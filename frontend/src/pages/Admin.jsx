@@ -37,7 +37,7 @@ export default function Admin() {
   const [isEditing, setIsEditing] = useState(false);
   const [editId, setEditId] = useState(null);
 
-  // ✅ Consistent Backend URL
+  // ✅ Consolidated Backend URL
   const API_URL = "https://entebus-api.onrender.com";
 
   // Audio feedback for scanner
@@ -147,7 +147,7 @@ export default function Admin() {
       const res = await axios.get(`${API_URL}/api/verify/${id}`);
       const ticket = res.data;
       
-      // ✅ FIX: Using String Comparison (YYYY-MM-DD) to avoid Timezone bugs
+      // ✅ LOGIC FIX: String comparison (YYYY-MM-DD) avoids timezone issues
       const todayStr = new Date().toISOString().split('T')[0];
       const ticketDateStr = ticket.travelDate;
 
@@ -170,7 +170,7 @@ export default function Admin() {
   };
 
   const confirmBoarding = async () => {
-    // ✅ Allow 'valid' (today) and 'future' (boarding early) for testing flexibility
+    // ✅ Logic Fix: Allow validation for valid or future tickets for admin flexibility
     if (!ticketData || (ticketStatus !== 'valid' && ticketStatus !== 'future')) return;
     setConfirmLoading(true);
     try {
@@ -230,14 +230,11 @@ export default function Admin() {
     } catch (err) { showToast("Error updating complaint", "error"); }
   };
 
-  // ✅ UPDATED: Manifest Logic with explicit clearing and robust param handling
   const handleFetchManifest = async () => {
     if (!manifestBusId || !manifestDate) {
       return showToast("Select Bus and Date first.", "info");
     }
-    
-    setManifestData([]); // Clear previous data while loading
-
+    setManifestData([]); 
     try {
       const res = await axios.get(`${API_URL}/api/admin/manifest`, {
         params: { busId: manifestBusId, date: manifestDate }
@@ -518,7 +515,7 @@ export default function Admin() {
       {/* MOBILE LOGOUT FOOTER */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 p-4 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border-t dark:border-slate-700 flex justify-center z-50">
         <button onClick={handleLogout} className="text-red-600 font-black uppercase text-[11px] tracking-widest flex items-center gap-2">
-           <LogOut size={14}/> Exit Admin Portal
+            <LogOut size={14}/> Exit Admin Portal
         </button>
       </div>
 
