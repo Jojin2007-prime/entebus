@@ -37,9 +37,10 @@ export default function Admin() {
   const [isEditing, setIsEditing] = useState(false);
   const [editId, setEditId] = useState(null);
 
-  // ✅ Pointing to your live Render Backend
+  // ✅ Consistent Backend URL
   const API_URL = "https://entebus-api.onrender.com";
 
+  // Audio feedback for scanner
   const playSuccessBeep = () => {
     try {
       const context = new (window.AudioContext || window.webkitAudioContext)();
@@ -146,7 +147,7 @@ export default function Admin() {
       const res = await axios.get(`${API_URL}/api/verify/${id}`);
       const ticket = res.data;
       
-      // ✅ Improved Date Logic: Comparing strings to avoid timezone shifts
+      // ✅ FIX: Using String Comparison (YYYY-MM-DD) to avoid Timezone bugs
       const todayStr = new Date().toISOString().split('T')[0];
       const ticketDateStr = ticket.travelDate;
 
@@ -169,6 +170,7 @@ export default function Admin() {
   };
 
   const confirmBoarding = async () => {
+    // ✅ Allow 'valid' (today) and 'future' (boarding early) for testing flexibility
     if (!ticketData || (ticketStatus !== 'valid' && ticketStatus !== 'future')) return;
     setConfirmLoading(true);
     try {
@@ -228,11 +230,14 @@ export default function Admin() {
     } catch (err) { showToast("Error updating complaint", "error"); }
   };
 
-  // ✅ UPDATED: Manifest Logic now syncs with updated server filter
+  // ✅ UPDATED: Manifest Logic with explicit clearing and robust param handling
   const handleFetchManifest = async () => {
     if (!manifestBusId || !manifestDate) {
       return showToast("Select Bus and Date first.", "info");
     }
+    
+    setManifestData([]); // Clear previous data while loading
+
     try {
       const res = await axios.get(`${API_URL}/api/admin/manifest`, {
         params: { busId: manifestBusId, date: manifestDate }
@@ -259,7 +264,6 @@ export default function Admin() {
     return `${hours12}:${minutes} ${period}`;
   };
 
-  // ✅ Logic Fix: Ensure phone displays correctly based on updated schema
   const processedManifest = manifestData.flatMap(booking =>
     booking.seatNumbers.map(seat => ({
       seat,

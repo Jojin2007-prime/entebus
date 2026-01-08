@@ -17,16 +17,18 @@ export default function BusManifest() {
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState('name'); // 'name', 'time', 'route'
 
+  const API_URL = "https://entebus-api.onrender.com";
+
   // --- 1. INITIALIZATION ---
   useEffect(() => {
     const init = async () => {
       try {
-        // A. Fetch All Buses for the Grid
-        const busRes = await axios.get('https://entebus-api.onrender.com/api/buses');
+        // Fetch All Buses
+        const busRes = await axios.get(`${API_URL}/api/buses`);
         setBuses(busRes.data);
         setLoading(false);
 
-        // B. Check URL for Deep Links (Coming from History Page?)
+        // Check for Deep Links (Coming from History Page)
         const urlBusId = searchParams.get('busId');
         const urlDate = searchParams.get('date');
 
@@ -35,8 +37,7 @@ export default function BusManifest() {
           if (targetBus) {
              handleViewManifest(targetBus, urlDate);
           } else {
-             // Fallback if bus isn't in the main list yet
-             const specificBusRes = await axios.get(`https://entebus-api.onrender.com/api/buses/${urlBusId}`);
+             const specificBusRes = await axios.get(`${API_URL}/api/buses/${urlBusId}`);
              handleViewManifest(specificBusRes.data, urlDate);
           }
         }
@@ -59,23 +60,24 @@ export default function BusManifest() {
   };
 
   // --- 3. FETCH DATA ---
+  // ✅ UPDATED: Matches backend /api/admin/manifest logic
   const fetchManifest = async (busId, date = '') => {
     try {
       const queryDate = date || filterDate; 
-      // This allows fetching ALL history if date is empty, or filtering if date exists
-      const url = `https://entebus-api.onrender.com/api/admin/manifest?busId=${busId}&date=${queryDate}`;
+      const url = `${API_URL}/api/admin/manifest`;
       
-      const res = await axios.get(url);
+      const res = await axios.get(url, {
+        params: { busId, date: queryDate }
+      });
       setPassengers(res.data);
     } catch (err) {
       console.error(err);
-      if(toast) toast.error('Error fetching passenger list');
+      if(toast) showToast('Error fetching passenger list', 'error');
     }
   };
 
   // --- 4. EVENT HANDLERS ---
   
-  // Open Detail View
   const handleViewManifest = (bus, dateOverride = '') => {
     setSelectedBus(bus);
     const dateToUse = dateOverride || ''; 
@@ -83,7 +85,6 @@ export default function BusManifest() {
     fetchManifest(bus._id, dateToUse);
   };
 
-  // Change Date Filter
   const handleDateFilterChange = (e) => {
     const newDate = e.target.value;
     setFilterDate(newDate);
@@ -92,9 +93,7 @@ export default function BusManifest() {
     }
   };
 
-  // Go Back
   const handleBack = () => {
-    // If we came from the History page via URL, back button should go back to History
     if (searchParams.get('busId')) {
       navigate('/admin/history');
     } else {
@@ -104,7 +103,6 @@ export default function BusManifest() {
     }
   };
 
-  // --- HELPERS ---
   const formatTime = (timeStr) => {
     if (!timeStr) return '';
     const [hour, minute] = timeStr.split(':');
@@ -114,11 +112,10 @@ export default function BusManifest() {
     return `${h12}:${minute} ${ampm}`;
   };
 
-  // --- RENDER ---
   return (
-    <div className="min-h-screen bg-gray-50 p-6 md:p-10">
+    <div className="min-h-screen bg-gray-50 p-6 md:p-10 font-sans">
       
-      {/* --- TOP HEADER --- */}
+      {/* TOP HEADER */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div className="flex items-center gap-4">
           <button 
@@ -138,7 +135,6 @@ export default function BusManifest() {
           </div>
         </div>
 
-        {/* Sorting Controls (Only on Grid View) */}
         {!selectedBus && (
           <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-200">
             <ArrowUpDown size={16} className="text-gray-400"/>
@@ -157,12 +153,9 @@ export default function BusManifest() {
       </div>
 
       {selectedBus ? (
-        // ==========================
-        // VIEW 1: BUS DETAIL / LIST
-        // ==========================
-        <div className="max-w-6xl mx-auto animate-fade-in">
+        <div className="max-w-6xl mx-auto animate-in fade-in duration-300">
           
-          {/* 1. Info Card & Filter */}
+          {/* Info Card & Filter */}
           <div className="bg-gradient-to-r from-blue-900 to-blue-700 text-white p-6 rounded-2xl shadow-xl mb-8 flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex-1">
               <h2 className="text-3xl font-bold mb-2">{selectedBus.name}</h2>
@@ -179,7 +172,6 @@ export default function BusManifest() {
               </div>
             </div>
             
-            {/* Date Picker */}
             <div className="bg-white/10 p-4 rounded-xl backdrop-blur-md border border-white/20 flex items-center gap-3 shadow-inner">
                <div className="p-2 bg-white/20 rounded-lg"><Filter size={20} className="text-white"/></div>
                <div className="flex flex-col">
@@ -194,7 +186,7 @@ export default function BusManifest() {
             </div>
           </div>
 
-          {/* 2. Passenger Table */}
+          {/* Passenger Table */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
               <span className="font-bold text-gray-700 flex items-center gap-2">
@@ -251,13 +243,17 @@ export default function BusManifest() {
                         </td>
                         <td className="p-4 text-gray-500">
                            <div className="flex flex-col gap-1 text-sm">
-                             <span className="flex items-center gap-2"><Phone size={12} className="text-gray-400"/> {p.customerPhone}</span>
+                             <span className="flex items-center gap-2"><Phone size={12} className="text-gray-400"/> {p.customerPhone || 'N/A'}</span>
                              <span className="flex items-center gap-2"><User size={12} className="text-gray-400"/> {p.customerEmail}</span>
                            </div>
                         </td>
                         <td className="p-4">
-                          <span className="inline-flex items-center gap-1.5 bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold border border-green-200">
-                            <CheckCircle size={14}/> Paid
+                          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${
+                            p.status === 'Boarded' 
+                              ? 'bg-green-100 text-green-700 border-green-200' 
+                              : 'bg-blue-100 text-blue-700 border-blue-200'
+                          }`}>
+                            <CheckCircle size={14}/> {p.status}
                           </span>
                         </td>
                       </tr>
@@ -269,10 +265,8 @@ export default function BusManifest() {
           </div>
         </div>
       ) : (
-        // ==========================
-        // VIEW 2: BUS GRID LIST
-        // ==========================
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in">
+        /* BUS GRID LIST */
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in duration-300">
           {loading ? (
              <div className="col-span-3 text-center py-20 text-gray-400">Loading Fleet Data...</div>
           ) : getSortedBuses().map(bus => (
@@ -281,9 +275,7 @@ export default function BusManifest() {
               className="group bg-white rounded-2xl shadow-sm border border-gray-200 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer relative overflow-hidden" 
               onClick={() => handleViewManifest(bus)}
             >
-              {/* Decorative top bar */}
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-400 to-blue-600 group-hover:h-1.5 transition-all"></div>
-
               <div className="flex justify-between items-start mb-5 mt-2">
                 <div>
                     <h3 className="font-bold text-xl text-gray-900 group-hover:text-blue-700 transition">{bus.name}</h3>
@@ -297,14 +289,12 @@ export default function BusManifest() {
                   <Clock size={14} /> {formatTime(bus.departureTime)}
                 </div>
               </div>
-              
               <div className="text-sm text-gray-600 space-y-3 mb-6 border-t border-gray-100 pt-4">
                   <div className="flex justify-between items-center">
                     <span className="flex items-center gap-2 text-xs font-bold uppercase text-gray-400"><MapPin size={12}/> Route</span> 
                     <span className="text-gray-900 font-bold">{bus.from} ➝ {bus.to}</span>
                   </div>
               </div>
-
               <button className="w-full bg-gray-50 text-gray-700 group-hover:bg-blue-600 group-hover:text-white py-3 rounded-xl font-bold text-sm transition-colors duration-200 flex justify-center items-center gap-2">
                 <FileText size={16} /> Select & View Manifest
               </button>
@@ -316,7 +306,6 @@ export default function BusManifest() {
   );
 }
 
-// Safety check for Toast context
 function tryUseToast() {
   try { return useToast(); } catch(e) { return null; }
 }

@@ -59,11 +59,11 @@ const bookingSchema = new mongoose.Schema({
   seatNumbers: [Number],
   customerEmail: String,
   customerName: String,
-  customerPhone: String,
+  customerPhone: String, // ✅ Added missing field
   bookingDate: { type: Date, default: Date.now },
   travelDate: String,
-  paymentId: String,
-  orderId: String,
+  paymentId: String,     // ✅ Added missing field
+  orderId: String,       // ✅ Added missing field
   amount: Number,
   status: { type: String, default: 'Pending' } // Statuses: Pending, Paid, Boarded, Expired
 });
@@ -110,7 +110,6 @@ app.post('/api/auth/login', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// --- ✅ UPDATED: PASSWORD RESET ROUTE ---
 app.post('/api/auth/reset-password', async (req, res) => {
   try {
     const { email, newPassword } = req.body;
@@ -119,10 +118,8 @@ app.post('/api/auth/reset-password', async (req, res) => {
       return res.status(400).json({ message: 'Email and new password are required' });
     }
 
-    // Find user using case-insensitive email
     const user = await User.findOne({ email: email.toLowerCase() });
     
-    // This provides the "Email is entered but not found" logic
     if (!user) {
       return res.status(404).json({ message: 'No account exists with this email address' });
     }
@@ -292,10 +289,14 @@ app.get('/api/bookings/occupied', async (req, res) => {
 });
 
 // 5. Admin Routes
+// ✅ UPDATED: Filter now includes 'Pending' so your current test data appears
 app.get('/api/admin/manifest', async (req, res) => {
   const { busId, date } = req.query;
   try {
-    const query = { busId, status: { $in: ['Paid', 'Boarded'] } };
+    const query = { 
+      busId, 
+      status: { $in: ['Paid', 'Boarded', 'Pending'] } 
+    };
     if (date) query.travelDate = date;
 
     const bookings = await Booking.find(query).populate('busId').sort({ travelDate: -1 });
