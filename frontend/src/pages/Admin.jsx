@@ -37,10 +37,9 @@ export default function Admin() {
   const [isEditing, setIsEditing] = useState(false);
   const [editId, setEditId] = useState(null);
 
-  // ✅ Consolidated Backend URL
+  // ✅ Consistent Backend URL
   const API_URL = "https://entebus-api.onrender.com";
 
-  // Audio feedback for scanner
   const playSuccessBeep = () => {
     try {
       const context = new (window.AudioContext || window.webkitAudioContext)();
@@ -147,7 +146,6 @@ export default function Admin() {
       const res = await axios.get(`${API_URL}/api/verify/${id}`);
       const ticket = res.data;
       
-      // ✅ LOGIC FIX: String comparison (YYYY-MM-DD) avoids timezone issues
       const todayStr = new Date().toISOString().split('T')[0];
       const ticketDateStr = ticket.travelDate;
 
@@ -170,7 +168,6 @@ export default function Admin() {
   };
 
   const confirmBoarding = async () => {
-    // ✅ Logic Fix: Allow validation for valid or future tickets for admin flexibility
     if (!ticketData || (ticketStatus !== 'valid' && ticketStatus !== 'future')) return;
     setConfirmLoading(true);
     try {
@@ -230,11 +227,14 @@ export default function Admin() {
     } catch (err) { showToast("Error updating complaint", "error"); }
   };
 
+  // ✅ FIXED LOGIC: Clear data before fetch and ensure params match backend
   const handleFetchManifest = async () => {
     if (!manifestBusId || !manifestDate) {
       return showToast("Select Bus and Date first.", "info");
     }
-    setManifestData([]); 
+    
+    setManifestData([]); // Reset UI list while loading
+
     try {
       const res = await axios.get(`${API_URL}/api/admin/manifest`, {
         params: { busId: manifestBusId, date: manifestDate }
@@ -243,11 +243,11 @@ export default function Admin() {
       if (res.data.length === 0) {
         showToast("No passengers found for this trip", "info");
       } else {
-        showToast(`Manifest loaded: ${res.data.length} bookings found`, "success");
+        showToast(`Manifest loaded: ${res.data.length} records`, "success");
       }
       setManifestData(res.data);
     } catch (err) {
-      showToast("Error connecting to backend", "error");
+      showToast("Backend connection failed", "error");
     }
   };
 

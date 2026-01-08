@@ -59,11 +59,11 @@ const bookingSchema = new mongoose.Schema({
   seatNumbers: [Number],
   customerEmail: String,
   customerName: String,
-  customerPhone: String, // ✅ Field restored
+  customerPhone: String, // ✅ Field restored for full contact data
   bookingDate: { type: Date, default: Date.now },
   travelDate: String,
-  paymentId: String,     // ✅ Field restored
-  orderId: String,       // ✅ Field restored
+  paymentId: String,     // ✅ Field restored for payment tracking
+  orderId: String,       // ✅ Field restored for Razorpay mapping
   amount: Number,
   status: { type: String, default: 'Pending' } // Statuses: Pending, Paid, Boarded, Expired
 });
@@ -234,6 +234,7 @@ app.post('/api/bookings/verify', async (req, res) => {
       const booking = await Booking.findById(bookingId);
       if (!booking) return res.status(404).json({ message: "Booking not found" });
 
+      // Final check for expiry before confirming payment
       const today = new Date().toISOString().split('T')[0];
       if (booking.travelDate < today) {
         booking.status = 'Expired';
@@ -279,7 +280,7 @@ app.get('/api/bookings/occupied', async (req, res) => {
 app.get('/api/admin/manifest', async (req, res) => {
   const { busId, date } = req.query;
   try {
-    // ✅ Includes 'Pending' so test bookings are visible in manifest
+    // ✅ Includes 'Pending' so test bookings are visible in the manifest tab
     const query = { 
       busId, 
       status: { $in: ['Paid', 'Boarded', 'Pending'] } 
@@ -294,6 +295,7 @@ app.get('/api/admin/manifest', async (req, res) => {
 app.get('/api/admin/history', async (req, res) => {
   try {
     const today = new Date().toISOString().split('T')[0];
+
     const history = await Booking.aggregate([
       { $match: { status: { $in: ['Paid', 'Boarded'] }, travelDate: { $lt: today } }},
       { $group: {
